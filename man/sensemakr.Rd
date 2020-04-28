@@ -4,18 +4,60 @@
 \alias{sensemakr}
 \alias{sensemakr.lm}
 \alias{sensemakr.formula}
+\alias{sensemakr.numeric}
 \title{Sensitivity analysis to unobserved confounders}
 \usage{
 sensemakr(...)
 
-\method{sensemakr}{lm}(model, treatment, benchmark_covariates = NULL,
-  kd = 1, ky = kd, q = 1, alpha = 0.05, r2dz.x = NULL,
-  r2yz.dx = r2dz.x, bound_label = "", reduce = TRUE, ...)
+\method{sensemakr}{lm}(
+  model,
+  treatment,
+  benchmark_covariates = NULL,
+  kd = 1,
+  ky = kd,
+  q = 1,
+  alpha = 0.05,
+  r2dz.x = NULL,
+  r2yz.dx = r2dz.x,
+  bound_label = "Manual Bound",
+  reduce = TRUE,
+  ...
+)
 
-\method{sensemakr}{formula}(formula, data, treatment,
-  benchmark_covariates = NULL, kd = 1, ky = kd, q = 1,
-  alpha = 0.05, r2dz.x = NULL, r2yz.dx = r2dz.x, bound_label = "",
-  reduce = TRUE, ...)
+\method{sensemakr}{formula}(
+  formula,
+  data,
+  treatment,
+  benchmark_covariates = NULL,
+  kd = 1,
+  ky = kd,
+  q = 1,
+  alpha = 0.05,
+  r2dz.x = NULL,
+  r2yz.dx = r2dz.x,
+  bound_label = "",
+  reduce = TRUE,
+  ...
+)
+
+\method{sensemakr}{numeric}(
+  estimate,
+  se,
+  dof,
+  treatment = "D",
+  q = 1,
+  alpha = 0.05,
+  r2dz.x = NULL,
+  r2yz.dx = r2dz.x,
+  bound_label = "manual_bound",
+  r2dxj.x = NULL,
+  r2yxj.dx = r2dxj.x,
+  benchmark_covariates = "manual_benchmark",
+  kd = 1,
+  ky = kd,
+  reduce = TRUE,
+  ...
+)
 }
 \arguments{
 \item{...}{arguments passed to other methods. First argument should either be an \code{\link{lm}} model with the
@@ -27,8 +69,7 @@ with the \code{\link{data.frame}} containing the variables of the model.}
 \item{treatment}{A character vector with the name of the treatment variable
 of the model.}
 
-\item{benchmark_covariates}{a character vector of the names of covariates that will be used to bound the plausible strength
-of the unobserved confounders.}
+\item{benchmark_covariates}{The user has two options: (i)  character vector of the names of covariates that will be used to bound the plausible strength of the unobserved confounders. Each variable will be considered separately; (ii) a named list with character vector names of covariates that will be used, \emph{as a group}, to bound the plausible strength of the unobserved confounders. The names of the list will be used for the benchmark labels. Note: for factor variables with more than two levels, you need to provide the name of each level as encoded in the \code{lm} model (the columns of \code{model.matrix}).}
 
 \item{kd}{numeric vector. Parameterizes how many times stronger the confounder is related to the treatment in comparison to the observed benchmark covariate.
 Default value is \code{1} (confounder is as strong as benchmark covariate).}
@@ -39,7 +80,7 @@ Default value is the same as \code{kd}.}
 \item{q}{percent change of the effect estimate that would be deemed problematic.  Default is \code{1},
 which means a reduction of 100\% of the current effect estimate (bring estimate to zero). It has to be greater than zero.}
 
-\item{alpha}{significance level used for computation of the robustness value. If \code{NULL} (the default), the robustness value refers only to the point estimate, no sampling uncertainty is taken into account.}
+\item{alpha}{significance level.}
 
 \item{r2dz.x}{Hypothetical partial R2 of unobserved confounder
 Z with treatment D, given covariates X.}
@@ -55,6 +96,16 @@ absolute value of the estimated coefficient? Default is \code{TRUE}.}
 \item{formula}{an object of the class \code{\link{formula}}: a symbolic description of the model to be fitted.}
 
 \item{data}{data needed only when you pass a formula as first parameter. An object of the class \code{\link{data.frame}} containing the variables used in the analysis.}
+
+\item{estimate}{Coefficient estimate.}
+
+\item{se}{Standard error of the coefficient estimate.}
+
+\item{dof}{Residual degrees of freedom of the regression.}
+
+\item{r2dxj.x}{partial R2 of covariate Xj with the treatment D (after partialling out the effect of the remaining covariates X, excluding Xj).}
+
+\item{r2yxj.dx}{partial R2 of covariate Xj with the outcome Y (after partialling out the effect of the remaining covariates X, excluding Xj).}
 }
 \value{
 An object of class \code{sensemakr}, containing:
@@ -65,7 +116,7 @@ An object of class \code{sensemakr}, containing:
  }
 }
 \description{
-This function performs sensitivity analysis to omitted variables as discussed in Cinelli and Hazlett (2018). It returns an object of
+This function performs sensitivity analysis to omitted variables as discussed in Cinelli and Hazlett (2020). It returns an object of
 class \code{sensemakr} with several pre-computed sensitivity statistics for reporting.
 After running \code{sensemakr} you may directly use the \code{plot}, \code{print} and \code{summary} methods in the returned object.
 }
@@ -101,7 +152,7 @@ ovb_minimal_reporting(sensitivity)
 
 }
 \references{
-Cinelli, C. and Hazlett, C. "Making Sense of Sensitivity: Extending Omitted Variable Bias." (2018).
+Cinelli, C. and Hazlett, C. (2020), "Making Sense of Sensitivity: Extending Omitted Variable Bias." Journal of the Royal Statistical Society, Series B (Statistical Methodology).
 }
 \seealso{
 The function \code{sensemakr} is a convenience function. You may use the other sensitivity functions of the package directly, such as the functions for sensitivity plots

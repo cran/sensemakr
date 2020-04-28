@@ -15,7 +15,7 @@
 #' For instance, a robustness value of 1\% means that an unobserved confounder that explain 1\% of the residual variance of the outcome
 #' and 1\% of the residual variance of the treatment is strong enough to explain away the estimated effect. Whereas a robustness value of 90\%
 #' means that any unobserved confounder that explain less than 90\% of the residual variance of both the outcome and the treatment assignment cannot
-#' fully account for the observed effect. You may also compute robustness value taking into account sampling uncertainty. See details in Cinelli and Hazlett (2018).
+#' fully account for the observed effect. You may also compute robustness value taking into account sampling uncertainty. See details in Cinelli and Hazlett (2020).
 #'
 #' The function \link{robustness_value} can take as input an \code{\link{lm}} object or you may directly pass the t-value and degrees of freedom.
 #'
@@ -46,15 +46,12 @@
 #'
 #' # you can also provide the statistics directly
 #' robustness_value(t_statistic = 4.18445, dof = 783)
-
-
 #' @return
 #' The function returns a numerical vector with the robustness value. The arguments q and alpha are saved as attributes of the vector for reference.
-#' @references Cinelli, C. and Hazlett, C. "Making Sense of Sensitivity: Extending Omitted Variable Bias." (2018).
+#' @references Cinelli, C. and Hazlett, C. (2020), "Making Sense of Sensitivity: Extending Omitted Variable Bias." Journal of the Royal Statistical Society, Series B (Statistical Methodology).
 #' @export
 #' @importFrom stats df.residual qt update vcov
 robustness_value = function(...) {
-
   UseMethod("robustness_value")
 }
 
@@ -63,14 +60,14 @@ robustness_value = function(...) {
 #' the robustness value of all covariates.
 #' @param q percent change of the effect estimate that would be deemed problematic.  Default is \code{1},
 #' which means a reduction of 100\% of the current effect estimate (bring estimate to zero). It has to be greater than zero.
-#' @param alpha significance level used for computation of the robustness value. If \code{NULL} (the default), the robustness value refers only to the point estimate, no sampling uncertainty is taken into account.
+#' @param alpha significance level.
 #' @rdname robustness_value
 #' @export
 #' @importFrom stats setNames
 robustness_value.lm = function(model,
                                covariates = NULL,
                                q = 1,
-                               alpha = NULL, ...) {
+                               alpha = 1, ...) {
 
   # check arguments
   check_q(q)
@@ -98,30 +95,35 @@ robustness_value.default = function(model, ...) {
 #' @param  dof residual degrees of freedom of the regression
 #' @rdname robustness_value
 #' @export
-robustness_value.numeric <- function(t_statistic, dof, q =1, alpha = NULL, ...){
+robustness_value.numeric <- function(t_statistic, dof, q =1, alpha = 1, ...){
 
   # check arguments
   check_q(q)
   check_alpha(alpha)
 
-  # Calculate RV
-  # QF is q * absolute value(partial f). We can get partial f from t for cov.
-  # of interest.
-  qf = q * abs(t_statistic / sqrt(dof))
 
-  # If we have an alpha value (i.e. we want to know whether the result will be
-  # significant, rather than whether it will be >0) we need to adjust the qf
-  # accordingly. [eqn. 18 from "Making Sense of Sensitivity"]
-  if (!is.null(alpha)) {
-    critical_f = abs(qt(alpha / 2,
-                        df = dof - 1)) / sqrt(dof - 1)
-      qf = qf - (critical_f)
-  }
+  # computes fq
+  fq  <-  q * abs(t_statistic / sqrt(dof))
 
-  # Eqn. 19 from "Making Sense of Sensitivity"
-  rv <- ifelse(qf < 0, 0,  0.5 * (sqrt(qf^4 + (4 * qf^2)) - qf^2))
-  attributes(rv) <- list(names = names(rv), q = q, alpha = alpha, class = c("numeric","rv"))
-  rv
+  # computes critical f
+  f.crit <- abs(qt(alpha / 2, df = dof - 1)) / sqrt(dof - 1)
+
+  # computes fqa
+  fqa <- fq - f.crit
+
+  # constraint binding case
+  rv  <-  0.5 * (sqrt(fqa^4 + (4 * fqa^2)) - fqa^2)
+
+  # constraint not binding case
+  rvx <- (fq^2 - f.crit^2)/(1 + fq^2)
+
+  # combine results
+  rv.out <- rv # initiate everyone as binding
+  rv.out[fqa < 0] <- 0 # zero for those who have negative fqa
+  rv.out[fq > 1/f.crit] <- rvx # extreme rv for those who are not binding
+
+  attributes(rv.out) <- list(names = names(rv.out), q = q, alpha = alpha, class = c("numeric","rv"))
+  rv.out
 }
 
 #
@@ -160,7 +162,7 @@ print.rv <- function(x, ...){
 #' The partial R2 can be used as an extreme-scenario sensitivity analysis to omitted variables.
 #' Considering an unobserved confounder that explains 100\% of the residual variance of the outcome,
 #' the partial R2 describes how strongly associated with the treatment this unobserved confounder would need to be in order to explain away the estimated effect.
-#' For details see Cinelli and Hazlett (2018).
+#' For details see Cinelli and Hazlett (2020).
 #'
 #' The partial (Cohen's) f2 is a common measure of effect size (a transformation of the partial R2) that can also be used directly
 #' for sensitivity analysis using a bias factor table.
@@ -195,7 +197,7 @@ print.rv <- function(x, ...){
 #' @return
 #' A numeric vector with the computed partial R2, f2, or f.
 #'
-#' @references Cinelli, C. and Hazlett, C. "Making Sense of Sensitivity: Extending Omitted Variable Bias." (2018).
+#' @references Cinelli, C. and Hazlett, C. (2020), "Making Sense of Sensitivity: Extending Omitted Variable Bias." Journal of the Royal Statistical Society, Series B (Statistical Methodology).
 #' @export
 partial_r2 = function(...) {
   UseMethod("partial_r2")
@@ -305,9 +307,11 @@ group_partial_r2 <- function(...){
 
 
 #' @inheritParams partial_r2
+#' @param covariates model covariates for which their grouped partial R2 will be computed.
 #' @rdname group_partial_r2
 #' @export
 group_partial_r2.lm <- function(model, covariates, ...){
+
   if (missing(covariates)) stop("Argument covariates missing.")
 
   coefs <- coef(model)
@@ -386,7 +390,7 @@ group_partial_r2.numeric <- function(F.stats, p, dof, ...){
 #' \item{f2yd.x }{a numeric vector with the partial (Cohen's) f2 of the treatment with the outcome, see details in \code{\link{partial_f2}}}
 #' \item{dof}{a numeric vector with the degrees of freedom of the model}
 #' }
-#' @references Cinelli, C. and Hazlett, C. "Making Sense of Sensitivity: Extending Omitted Variable Bias." (2018).
+#' @references Cinelli, C. and Hazlett, C. (2020), "Making Sense of Sensitivity: Extending Omitted Variable Bias." Journal of the Royal Statistical Society, Series B (Statistical Methodology).
 #' @export
 sensitivity_stats <- function(...){
   UseMethod("sensitivity_stats")
@@ -399,7 +403,9 @@ sensitivity_stats <- function(...){
 sensitivity_stats.lm <- function(model,
                                  treatment,
                                  q = 1,
-                                 alpha = 0.05, ...)
+                                 alpha = 0.05,
+                                 reduce = TRUE,
+                                 ...)
 {
 
   model_data <- model_helper(model, covariates = treatment)
@@ -409,7 +415,8 @@ sensitivity_stats.lm <- function(model,
                                                           treatment = treatment,
                                                           q = q,
                                                           alpha = alpha,
-                                                          t_statistics = t_statistic))
+                                                          reduce = reduce,
+                                                          ...))
   sensitivity_stats
 }
 
@@ -422,28 +429,27 @@ sensitivity_stats.numeric <- function(estimate,
                                       treatment = "treatment",
                                       q = 1,
                                       alpha = 0.05,
+                                      reduce = TRUE,
                                       ...)
 {
   if (se < 0 ) stop("Standard Error must be positive")
   if (!is.numeric(se)) stop("Standard Error must be a numeric value")
   if (dof < 0) stop("Degrees of Freedom must be poisitive")
-  t_statistic <- estimate/se
+  h0 <- ifelse(reduce, estimate*(1 - q), estimate*(1 + q) )
+  original_t  <- estimate/se
+  t_statistic <- (estimate - h0)/se
   sensitivity_stats <- data.frame(treatment = treatment, stringsAsFactors = FALSE)
   sensitivity_stats[["estimate"]] <- estimate
   sensitivity_stats[["se"]] <- se
   sensitivity_stats[["t_statistic"]] <- t_statistic
-  sensitivity_stats[["r2yd.x"]] <- as.numeric(partial_r2(t_statistic = t_statistic, dof = dof))
-  sensitivity_stats[["rv_q"]] <- (robustness_value(t_statistic = t_statistic, dof = dof, q = q))
-  sensitivity_stats[["rv_qa"]] <- (robustness_value(t_statistic = t_statistic, dof = dof, q = q, alpha = alpha))
-  sensitivity_stats[["f2yd.x"]] <- as.numeric(partial_f2(t_statistic = t_statistic, dof = dof))
+  sensitivity_stats[["r2yd.x"]] <- as.numeric(partial_r2(t_statistic = original_t, dof = dof))
+  sensitivity_stats[["rv_q"]] <- (robustness_value(t_statistic = original_t, dof = dof, q = q))
+  sensitivity_stats[["rv_qa"]] <- (robustness_value(t_statistic = original_t, dof = dof, q = q, alpha = alpha))
+  sensitivity_stats[["f2yd.x"]] <- as.numeric(partial_f2(t_statistic = original_t, dof = dof))
   sensitivity_stats[["dof"]] <- dof
   sensitivity_stats
 }
 
-#
-# sensitivity_stats.sensemakr <- function(x, ...){
-#   x$sensitivity_stats
-# }
 
 # sanity checkers ---------------------------------------------------------
 
@@ -458,30 +464,22 @@ check_q <- function(q) {
 
 check_alpha <- function(alpha) {
   # Error: alpha, if provided, was non-numeric or out of bounds
-  if (!is.null(alpha) && (!is.numeric(alpha) || length(alpha) > 1 ||
+  if ((!is.numeric(alpha) || length(alpha) > 1 ||
                           alpha < 0 || alpha > 1)) {
-    stop("The `alpha` parameter, if provided, must be a single number ",
-         "between 0 and 1.")
+    stop("`alpha` must be between 0 and 1.")
   }
 }
 
 
-check_r2_parameters = function(r2yz.dx, r2dz.x, se, dof) {
-  # Invalid SE
+check_se <- function(se){
   if (se < 0) {
     stop("Standard error provided must be a single non-negative number")
   }
+}
 
-  # Invalid DOF
+check_dof <- function(dof){
   if (!is.numeric(dof) || length(dof) > 1 || dof <= 0) {
     stop("Degrees of freedom provided must be a single non-negative number.")
-  }
-
-  # Invalid R^2 Y / R^2 D.
-  if (!is.numeric(r2yz.dx) || !is.numeric(r2dz.x) ||
-     any(r2yz.dx < 0) || any(r2yz.dx > 1) ||
-     any(r2dz.x < 0) || any(r2dz.x > 1)) {
-    stop("Provided partial R^2 of Y and D must both be numbers between 0 and 1.")
   }
 }
 
@@ -490,8 +488,16 @@ check_r2_parameters = function(r2yz.dx, r2dz.x, se, dof) {
 
 # model helpers -----------------------------------------------------------
 
-# helpers for all others
-model_helper = function(model, covariates = NULL) {
+
+#' Helper function for extracting model statistics
+#'
+#' This is an internal function used for extracting the necessary statistics from the models.
+#'
+#' @param model model to extract statistics from
+#' @param covariates model covariates from which statistics will be extracted.
+#' @param ... arguments passed to other methods.
+#' @export
+model_helper = function(model, covariates = NULL, ...) {
   UseMethod("model_helper", model)
 }
 
@@ -501,7 +507,8 @@ model_helper = function(model, covariates = NULL) {
 #        class(model)[1])
 # }
 
-model_helper.lm = function(model, covariates = NULL) {
+#' @export
+model_helper.lm = function(model, covariates = NULL, ...) {
   # Quickly extract things from an lm object
 
   # If we have a dropped coefficient (multicolinearity), we're not going to

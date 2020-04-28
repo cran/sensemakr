@@ -1,4 +1,4 @@
-context("test-contour.R")
+context("Tests for Contour Plots")
 
 
 test_that("contour plot tests", {
@@ -51,8 +51,8 @@ test_that("contour plot tests", {
   expect_error(ovb_contour_plot(estimate = 2,
                                 se = 0.5,
                                 dof = 200,
-                                r2dz.x = c(0.5, 0.8),
-                                r2yz.dx = 0.3))
+                                r2dz.x = .2,
+                                r2yz.dx = c(.1,.2,.3)))
 
   # Misspecified r2yz.dx
   expect_error(ovb_contour_plot(estimate = 2,
@@ -78,29 +78,43 @@ test_that("contour plot tests", {
                                 benchmark_covariate = "test1"))
 
   # Valid plots
-  ovb_contour_plot(estimate = 2,
-                   se = 0.5,
-                   dof = 200,
-                   r2yz.dx = 0.1,
-                   r2dz.x = 0.1,
-                   bound_label = "")
+  expect_invisible(ovb_contour_plot(estimate = 2,
+                                     se = 0.5,
+                                     dof = 200,
+                                     r2yz.dx = 0.1,
+                                     r2dz.x = 0.1,
+                                     bound_label = ""))
 
-  ovb_contour_plot(estimate = 2,
+  expect_warning(ovb_contour_plot(estimate = 2,
                    se = 0.5,
                    dof = 200,
                    r2yz.dx = 0.1,
                    r2dz.x = 0.1,
-                   bound_label = "my bound")
+                   bound_label = "", lim.y = 1.1))
+
+  expect_warning(ovb_contour_plot(estimate = 2,
+                                  se = 0.5,
+                                  dof = 200,
+                                  r2yz.dx = 0.1,
+                                  r2dz.x = 0.1,
+                                  bound_label = "", lim.y = -.1))
+
+  expect_invisible(ovb_contour_plot(estimate = 2,
+                                    se = 0.5,
+                                    dof = 200,
+                                    r2yz.dx = 0.1,
+                                    r2dz.x = 0.1,
+                                    bound_label = "my bound"))
   # lm
-  ovb_contour_plot(lm.out,
-                   treatment = "directlyharmed",
-                   benchmark_covariates = "female",
-                   kd = 1:3, ky = 1:3)
+  expect_invisible(ovb_contour_plot(lm.out,
+                                    treatment = "directlyharmed",
+                                    benchmark_covariates = "female",
+                                    kd = 1:3, ky = 1:3))
 
   # formula
-  ovb_contour_plot(peacefactor ~ directlyharmed + age + farmer_dar +
-                     herder_dar + pastvoted + hhsize_darfur + female + village, data = darfur,
-                   treatment = "directlyharmed",
-                   benchmark_covariates = "female",
-                   kd = 1:3, ky = 1:3)
+  expect_invisible(ovb_contour_plot(peacefactor ~ directlyharmed + age + farmer_dar +
+                                      herder_dar + pastvoted + hhsize_darfur + female + village, data = darfur,
+                                    treatment = "directlyharmed",
+                                    benchmark_covariates = "female",
+                                    kd = 1:3, ky = 1:3))
 })

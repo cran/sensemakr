@@ -9,29 +9,81 @@
 \usage{
 ovb_contour_plot(...)
 
-\method{ovb_contour_plot}{lm}(model, treatment,
-  benchmark_covariates = NULL, kd = 1, ky = kd, r2dz.x = NULL,
-  r2yz.dx = r2dz.x, bound_label = NULL,
-  sensitivity.of = c("estimate", "t-value"), reduce = TRUE,
-  estimate.threshold = 0, t.threshold = 2, lim = max(c(0.4, r2dz.x,
-  r2yz.dx)), nlevels = 20, col.contour = "grey40",
-  col.thr.line = "red", label.text = TRUE, label.bump.x = 0.02,
-  label.bump.y = 0.02, ...)
+\method{ovb_contour_plot}{lm}(
+  model,
+  treatment,
+  benchmark_covariates = NULL,
+  kd = 1,
+  ky = kd,
+  r2dz.x = NULL,
+  r2yz.dx = r2dz.x,
+  bound_label = "manual",
+  sensitivity.of = c("estimate", "t-value"),
+  reduce = TRUE,
+  estimate.threshold = 0,
+  t.threshold = 2,
+  nlevels = 10,
+  col.contour = "grey40",
+  col.thr.line = "red",
+  label.text = TRUE,
+  cex.label.text = 0.7,
+  round = 3,
+  ...
+)
 
-\method{ovb_contour_plot}{formula}(formula, data, treatment,
-  benchmark_covariates = NULL, kd = 1, ky = kd, r2dz.x = NULL,
-  r2yz.dx = r2dz.x, bound_label = NULL,
-  sensitivity.of = c("estimate", "t-value"), reduce = TRUE,
-  estimate.threshold = 0, t.threshold = 2, lim = max(c(0.4, r2dz.x,
-  r2yz.dx)), nlevels = 20, col.contour = "grey40",
-  col.thr.line = "red", label.text = TRUE, ...)
+\method{ovb_contour_plot}{formula}(
+  formula,
+  data,
+  treatment,
+  benchmark_covariates = NULL,
+  kd = 1,
+  ky = kd,
+  r2dz.x = NULL,
+  r2yz.dx = r2dz.x,
+  bound_label = NULL,
+  sensitivity.of = c("estimate", "t-value"),
+  reduce = TRUE,
+  estimate.threshold = 0,
+  t.threshold = 2,
+  nlevels = 10,
+  col.contour = "grey40",
+  col.thr.line = "red",
+  label.text = TRUE,
+  cex.label.text = 0.7,
+  round = 3,
+  ...
+)
 
-\method{ovb_contour_plot}{numeric}(estimate, se, dof, r2dz.x = NULL,
-  r2yz.dx = r2dz.x, bound_label = "", sensitivity.of = c("estimate",
-  "t-value"), reduce = TRUE, estimate.threshold = 0, t.threshold = 2,
-  lim = max(c(0.4, r2dz.x + 0.1, r2yz.dx + 0.1)), nlevels = 20,
-  col.contour = "black", col.thr.line = "red", label.text = TRUE,
-  cex.label.text = 1, label.bump.x = 0.02, label.bump.y = 0.02, ...)
+\method{ovb_contour_plot}{numeric}(
+  estimate,
+  se,
+  dof,
+  r2dz.x = NULL,
+  r2yz.dx = r2dz.x,
+  bound_label = rep("manual", length(r2dz.x)),
+  sensitivity.of = c("estimate", "t-value"),
+  reduce = TRUE,
+  estimate.threshold = 0,
+  t.threshold = 2,
+  lim = NULL,
+  lim.y = NULL,
+  nlevels = 10,
+  col.contour = "black",
+  col.thr.line = "red",
+  label.text = TRUE,
+  cex.label.text = 0.7,
+  label.bump.x = NULL,
+  label.bump.y = NULL,
+  xlab = NULL,
+  ylab = NULL,
+  cex.lab = 0.8,
+  cex.axis = 0.8,
+  cex.main = 1,
+  asp = lim/lim.y,
+  list.par = list(mar = c(4, 4, 1, 1), pty = "s"),
+  round = 3,
+  ...
+)
 }
 \arguments{
 \item{...}{arguments passed to other methods. First argument should either be an \code{\link{lm}} model with the
@@ -44,8 +96,7 @@ or a numeric vector with the coefficient estimate.}
 \item{treatment}{A character vector with the name of the treatment variable
 of the model.}
 
-\item{benchmark_covariates}{a character vector of the names of covariates that will be used to bound the plausible strength
-of the unobserved confounders.}
+\item{benchmark_covariates}{The user has two options: (i)  character vector of the names of covariates that will be used to bound the plausible strength of the unobserved confounders. Each variable will be considered separately; (ii) a named list with character vector names of covariates that will be used, \emph{as a group}, to bound the plausible strength of the unobserved confounders. The names of the list will be used for the benchmark labels. Note: for factor variables with more than two levels, you need to provide the name of each level as encoded in the \code{lm} model (the columns of \code{model.matrix}).}
 
 \item{kd}{numeric vector. Parameterizes how many times stronger the confounder is related to the treatment in comparison to the observed benchmark covariate.
 Default value is \code{1} (confounder is as strong as benchmark covariate).}
@@ -71,8 +122,6 @@ absolute value of the estimated coefficient? Default is \code{TRUE}.}
 
 \item{t.threshold}{critical threshold for the t-value.}
 
-\item{lim}{sets limit of the plot.}
-
 \item{nlevels}{number of levels for the contour plot.}
 
 \item{col.contour}{color of contour lines.}
@@ -81,9 +130,9 @@ absolute value of the estimated coefficient? Default is \code{TRUE}.}
 
 \item{label.text}{should label texts be plotted? Default is \code{TRUE}.}
 
-\item{label.bump.x}{bump on the x coordinate of label text.}
+\item{cex.label.text}{size of the label text.}
 
-\item{label.bump.y}{bump on the y coordinate of label text.}
+\item{round}{number of digits to show in contours and bound values}
 
 \item{formula}{an object of the class \code{\link{formula}}: a symbolic description of the model to be fitted.}
 
@@ -95,7 +144,27 @@ absolute value of the estimated coefficient? Default is \code{TRUE}.}
 
 \item{dof}{Residual degrees of freedom of the regression.}
 
-\item{cex.label.text}{size of the label text.}
+\item{lim}{sets limit for x-axis. If `NULL`, limits are computed automatically.}
+
+\item{lim.y}{sets limit for y-axis. If `NULL`, limits are computed automatically.}
+
+\item{label.bump.x}{bump on the x coordinate of label text.}
+
+\item{label.bump.y}{bump on the y coordinate of label text.}
+
+\item{xlab}{label of x axis. If `NULL`, default label is used.}
+
+\item{ylab}{label of y axis. If `NULL`, default label is used.}
+
+\item{cex.lab}{The magnification to be used for x and y labels relative to the current setting of cex.}
+
+\item{cex.axis}{The magnification to be used for axis annotation relative to the current setting of cex.}
+
+\item{cex.main}{The magnification to be used for main titles relative to the current setting of cex.}
+
+\item{asp}{the y/x aspect ratio. Default is 1.}
+
+\item{list.par}{arguments to be passed to \code{\link{par}}. It needs to be a named list.}
 }
 \value{
 The function returns invisibly the data used for the contour plot (contour grid and bounds).
@@ -111,7 +180,7 @@ The horizontal axis of the plot shows hypothetical values of the partial R2 of t
  The dotted red line show the chosen critical threshold (for instance, zero): confounders with such strength (or stronger) are sufficient to invalidate the research conclusions.
  All results are exact for single confounders and conservative for multiple/nonlinear confounders.
 
- See Cinelli and Hazlett (2018) for details.
+ See Cinelli and Hazlett (2020) for details.
 }
 \examples{
 
@@ -126,5 +195,5 @@ ovb_contour_plot(model, treatment = "directlyharmed",
 
 }
 \references{
-Cinelli, C. and Hazlett, C. "Making Sense of Sensitivity: Extending Omitted Variable Bias." (2018).
+Cinelli, C. and Hazlett, C. (2020), "Making Sense of Sensitivity: Extending Omitted Variable Bias." Journal of the Royal Statistical Society, Series B (Statistical Methodology).
 }

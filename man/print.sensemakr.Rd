@@ -6,13 +6,17 @@
 \alias{ovb_minimal_reporting}
 \title{Sensitivity analysis print and summary methods for \code{sensemakr}}
 \usage{
-\method{print}{sensemakr}(x, digits = max(3L, getOption("digits") - 2L),
-  ...)
+\method{print}{sensemakr}(x, digits = max(3L, getOption("digits") - 2L), ...)
 
-\method{summary}{sensemakr}(object, digits = max(3L, getOption("digits")
-  - 3L), ...)
+\method{summary}{sensemakr}(object, digits = max(3L, getOption("digits") - 3L), ...)
 
-ovb_minimal_reporting(x, digits = 3, verbose = TRUE, ...)
+ovb_minimal_reporting(
+  x,
+  digits = 3,
+  verbose = TRUE,
+  format = c("latex", "html", "pure_html"),
+  ...
+)
 }
 \arguments{
 \item{x}{an object of class \code{\link{sensemakr}}.}
@@ -24,15 +28,20 @@ ovb_minimal_reporting(x, digits = 3, verbose = TRUE, ...)
 \item{object}{an object of class \code{\link{sensemakr}}.}
 
 \item{verbose}{if `TRUE`, the function prints the LaTeX code with \code{\link{cat}}}
+
+\item{format}{code format to print, either \code{latex} or \code{html}. The default html version
+has some mathematical content that requires mathjax or equivalent library to parse.
+If you need only html, use the option "pure_html".}
 }
 \value{
-The function \code{ovb_minimal_reporting} returns the LaTeX code invisibly in character form and also prints with
+The function \code{ovb_minimal_reporting} returns the LaTeX/HTML code invisibly in character form and also prints with
 \code{\link{cat}} the LaTeX code. To suppress automatic printing, set \code{verbose = FALSE}.
 }
 \description{
 The \code{print} and \code{summary} methods provide verbal descriptions of the sensitivity analysis results
-obtained with the function \code{\link{sensemakr}}. The function \code{\link{ovb_minimal_reporting}} provides the latex code for a minimal
-sensitivity analysis reporting, as suggested in Cinelli and Hazlett (2018).
+obtained with the function \code{\link{sensemakr}}. The function \code{\link{ovb_minimal_reporting}} provides
+latex or html code for a minimal
+sensitivity analysis reporting, as suggested in Cinelli and Hazlett (2020).
 }
 \examples{
 # runs regression model
@@ -55,5 +64,5 @@ ovb_minimal_reporting(sensitivity)
 
 }
 \references{
-Cinelli, C. and Hazlett, C. "Making Sense of Sensitivity: Extending Omitted Variable Bias." (2018).
+Cinelli, C. and Hazlett, C. (2020), "Making Sense of Sensitivity: Extending Omitted Variable Bias." Journal of the Royal Statistical Society, Series B (Statistical Methodology).
 }

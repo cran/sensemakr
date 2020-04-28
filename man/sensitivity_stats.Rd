@@ -8,11 +8,18 @@
 \usage{
 sensitivity_stats(...)
 
-\method{sensitivity_stats}{lm}(model, treatment, q = 1, alpha = 0.05,
-  ...)
+\method{sensitivity_stats}{lm}(model, treatment, q = 1, alpha = 0.05, reduce = TRUE, ...)
 
-\method{sensitivity_stats}{numeric}(estimate, se, dof,
-  treatment = "treatment", q = 1, alpha = 0.05, ...)
+\method{sensitivity_stats}{numeric}(
+  estimate,
+  se,
+  dof,
+  treatment = "treatment",
+  q = 1,
+  alpha = 0.05,
+  reduce = TRUE,
+  ...
+)
 }
 \arguments{
 \item{...}{Arguments passed to other methods. First argument should either be an
@@ -27,7 +34,10 @@ of the model.}
 \item{q}{percent change of the effect estimate that would be deemed problematic.  Default is \code{1},
 which means a reduction of 100\% of the current effect estimate (bring estimate to zero). It has to be greater than zero.}
 
-\item{alpha}{significance level used for computation of the robustness value. If \code{NULL} (the default), the robustness value refers only to the point estimate, no sampling uncertainty is taken into account.}
+\item{alpha}{significance level.}
+
+\item{reduce}{Should the bias adjustment reduce or increase the
+absolute value of the estimated coefficient? Default is \code{TRUE}.}
 
 \item{estimate}{Coefficient estimate.}
 
@@ -70,5 +80,5 @@ sensitivity_stats(estimate = 0.09731582, se = 0.02325654, dof = 783)
 
 }
 \references{
-Cinelli, C. and Hazlett, C. "Making Sense of Sensitivity: Extending Omitted Variable Bias." (2018).
+Cinelli, C. and Hazlett, C. (2020), "Making Sense of Sensitivity: Extending Omitted Variable Bias." Journal of the Royal Statistical Society, Series B (Statistical Methodology).
 }

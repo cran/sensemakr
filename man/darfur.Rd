@@ -36,9 +36,9 @@ darfur
 }
 \description{
 Data on attitudes of Darfurian refugees in eastern Chad. The main "treatment"
-variable is \code{directharm}, which indicates that the individual was physically
+variable is \code{directlyharmed}, which indicates that the individual was physically
 injured during attacks on villages in Darfur, largely between 2003 and 2004.
-The main outcome of interest is \code{peaceindex}, a measure of pro-peace
+The main outcome of interest is \code{peacefactor}, a measure of pro-peace
 attitudes.
 
 Key  covariates include \code{herder_dar}
@@ -48,8 +48,10 @@ farmer in Darfur), \code{age}, \code{female} (indicator for female), and
 prior to the conflict).
 }
 \references{
-Cinelli, C. and Hazlett, C. "Making Sense of Sensitivity: Extending Omitted Variable Bias." (2018)
 
-Hazlett, C. (2018). Angry or weary? The effect of personal violence on attitudes towards peace in darfur. Working Paper.
+
+Cinelli, C. and Hazlett, C. (2020), "Making Sense of Sensitivity: Extending Omitted Variable Bias." Journal of the Royal Statistical Society, Series B (Statistical Methodology).
+
+Hazlett, Chad. (2019) "Angry or Weary? How Violence Impacts Attitudes toward Peace among Darfurian Refugees." Journal of Conflict Resolution: 0022002719879217.
 }
 \keyword{datasets}

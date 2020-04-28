@@ -9,20 +9,59 @@
 \usage{
 ovb_extreme_plot(...)
 
-\method{ovb_extreme_plot}{lm}(model, treatment,
-  benchmark_covariates = NULL, kd = 1, r2yz.dx = c(1, 0.75, 0.5),
-  r2dz.x = NULL, reduce = TRUE, threshold = 0, lim = min(c(r2dz.x +
-  0.1, 0.5)), legend = TRUE, cex.legend = 0.5, legend.bty = "o", ...)
+\method{ovb_extreme_plot}{lm}(
+  model,
+  treatment,
+  benchmark_covariates = NULL,
+  kd = 1,
+  r2yz.dx = c(1, 0.75, 0.5),
+  r2dz.x = NULL,
+  reduce = TRUE,
+  threshold = 0,
+  lim = min(c(r2dz.x + 0.1, 0.5)),
+  legend = TRUE,
+  cex.legend = 0.65,
+  legend.bty = "n",
+  ...
+)
 
-\method{ovb_extreme_plot}{formula}(formula, data, treatment,
-  benchmark_covariates = NULL, kd = 1, r2yz.dx = c(1, 0.75, 0.5),
-  r2dz.x = NULL, reduce = TRUE, threshold = 0, lim = min(c(r2dz.x +
-  0.1, 0.5)), legend = TRUE, cex.legend = 0.5, legend.bty = "o", ...)
+\method{ovb_extreme_plot}{formula}(
+  formula,
+  data,
+  treatment,
+  benchmark_covariates = NULL,
+  kd = 1,
+  r2yz.dx = c(1, 0.75, 0.5),
+  r2dz.x = NULL,
+  reduce = TRUE,
+  threshold = 0,
+  lim = min(c(r2dz.x + 0.1, 0.5)),
+  legend = TRUE,
+  cex.legend = 0.65,
+  legend.bty = "n",
+  ...
+)
 
-\method{ovb_extreme_plot}{numeric}(estimate, se, dof, r2dz.x = NULL,
-  r2yz.dx = c(1, 0.75, 0.5), reduce = TRUE, threshold = 0,
-  lim = min(c(r2dz.x + 0.1, 0.5)), legend = TRUE, cex.legend = 0.5,
-  legend.bty = "o", ...)
+\method{ovb_extreme_plot}{numeric}(
+  estimate,
+  se,
+  dof,
+  r2dz.x = NULL,
+  r2yz.dx = c(1, 0.75, 0.5),
+  reduce = TRUE,
+  threshold = 0,
+  lim = min(c(r2dz.x + 0.1, 0.5)),
+  legend = TRUE,
+  legend.title = NULL,
+  cex.legend = 0.65,
+  legend.bty = "n",
+  xlab = NULL,
+  ylab = NULL,
+  cex.lab = 0.7,
+  cex.axis = 0.7,
+  list.par = list(oma = c(1, 1, 1, 1)),
+  ...
+)
 }
 \arguments{
 \item{...}{arguments passed to other methods. First argument should either be an \code{\link{lm}} model with the
@@ -35,8 +74,7 @@ or a numeric vector with the coefficient estimate.}
 \item{treatment}{A character vector with the name of the treatment variable
 of the model.}
 
-\item{benchmark_covariates}{a character vector of the names of covariates that will be used to bound the plausible strength
-of the unobserved confounders.}
+\item{benchmark_covariates}{The user has two options: (i)  character vector of the names of covariates that will be used to bound the plausible strength of the unobserved confounders. Each variable will be considered separately; (ii) a named list with character vector names of covariates that will be used, \emph{as a group}, to bound the plausible strength of the unobserved confounders. The names of the list will be used for the benchmark labels. Note: for factor variables with more than two levels, you need to provide the name of each level as encoded in the \code{lm} model (the columns of \code{model.matrix}).}
 
 \item{kd}{numeric vector. Parameterizes how many times stronger the confounder is related to the treatment in comparison to the observed benchmark covariate.
 Default value is \code{1} (confounder is as strong as benchmark covariate).}
@@ -52,7 +90,7 @@ absolute value of the estimated coefficient? Default is \code{TRUE}.}
 
 \item{threshold}{estimate threshold.}
 
-\item{lim}{sets limit of the plot.}
+\item{lim}{sets limit for x-axis. If `NULL`, limits are computed automatically.}
 
 \item{legend}{should legend be plotted? Default is \code{TRUE}.}
 
@@ -69,6 +107,18 @@ absolute value of the estimated coefficient? Default is \code{TRUE}.}
 \item{se}{Standard error of the coefficient estimate.}
 
 \item{dof}{Residual degrees of freedom of the regression.}
+
+\item{legend.title}{the legend title. If \code{NULL}, then default legend is used.}
+
+\item{xlab}{label of x axis. If `NULL`, default label is used.}
+
+\item{ylab}{label of y axis. If `NULL`, default label is used.}
+
+\item{cex.lab}{The magnification to be used for x and y labels relative to the current setting of cex.}
+
+\item{cex.axis}{The magnification to be used for axis annotation relative to the current setting of cex.}
+
+\item{list.par}{arguments to be passed to \code{\link{par}}. It needs to be a named list.}
 }
 \value{
 The function returns invisibly the data used for the extreme plot.
@@ -82,7 +132,7 @@ The partial R2 of the confounder with the outcome is represented by \emph{differ
 The red marks on horizontal axis are bounds on the partial R2 of the unobserved confounder \code{kd} times as strong as the covariates used for benchmarking.
 The dotted red line represent the threshold for the effect estimate deemed to be problematic (for instance, zero).
 
-See Cinelli and Hazlett (2018) for details.
+See Cinelli and Hazlett (2020) for details.
 }
 \examples{
 
@@ -98,5 +148,5 @@ ovb_extreme_plot(model, treatment = "directlyharmed",
 
 }
 \references{
-Cinelli, C. and Hazlett, C. "Making Sense of Sensitivity: Extending Omitted Variable Bias." (2018).
+Cinelli, C. and Hazlett, C. (2020), "Making Sense of Sensitivity: Extending Omitted Variable Bias." Journal of the Royal Statistical Society, Series B (Statistical Methodology).
 }
