@@ -332,6 +332,7 @@ ovb_contour_plot.formula = function(formula,
 #' @param cex.main The magnification to be used for main titles relative to the current setting of cex.
 #' @param cex.axis The magnification to be used for axis annotation relative to the current setting of cex.
 #' @param asp the y/x aspect ratio. Default is 1.
+#' @param show.unadjusted should the unadjusted estimates be shown? Default is `TRUE`.
 #' @export
 ovb_contour_plot.numeric = function(estimate,
                                     se,
@@ -343,6 +344,7 @@ ovb_contour_plot.numeric = function(estimate,
                                     reduce = TRUE,
                                     estimate.threshold = 0,
                                     t.threshold = 2,
+                                    show.unadjusted = TRUE,
                                     lim = NULL,
                                     lim.y = NULL,
                                     nlevels = 10,
@@ -521,13 +523,15 @@ ovb_contour_plot.numeric = function(estimate,
           ...)
 
   # Add the point of the initial estimate.
-  points(0, 0, pch = 17, col = "black", cex = 1)
+  if(show.unadjusted){
+    points(0, 0, pch = 17, col = "black", cex = 1)
 
-  text(0.0 + label.bump.x, 0.00 + label.bump.y,
-       paste0("Unadjusted\n(",
-              signif(plot_estimate, 2),
-              ")"),
-       cex = cex.label.text)
+    text(0.0 + label.bump.x, 0.00 + label.bump.y,
+         paste0("Unadjusted\n(",
+                signif(plot_estimate, 2),
+                ")"),
+         cex = cex.label.text)
+  }
 
   # add bounds
   if (!is.null(r2dz.x)) {
@@ -618,7 +622,7 @@ add_bound_to_contour.ovb_bounds <- function(bounds,
   }
 
   # gets bound from environment
-  if (bounds$treatment != plot.env$treatment) {
+  if (any(!bounds$treatment %in% plot.env$treatment)) {
   warning("Treament variable of bounds (",  bounds$treatment, ") ",
           "differs from the treatment variable of the last contour plot (",
           plot.env$treatment, ").")
@@ -736,6 +740,12 @@ add_bound_to_contour.lm <- function(model,
 #' @rdname add_bound_to_contour
 #' @param bound_value value to be printed in label bound.
 #' @param round integer indicating the number of decimal places to be used for rounding.
+#' @param font.label.text font for the label text.
+#' @param point.pch plotting character for \code{\link{points}}.
+#' @param point.col color code or name for \code{\link{points}}.
+#' @param point.bg backgrounf (fill) color for \code{\link{points}}.
+#' @param point.cex size of \code{\link{points}}.
+#' @param point.font font for \code{\link{points}}.
 #' @export
 add_bound_to_contour.numeric <- function(r2dz.x,
                                          r2yz.dx,
@@ -743,9 +753,15 @@ add_bound_to_contour.numeric <- function(r2dz.x,
                                          bound_label = NULL,
                                          label.text = TRUE,
                                          cex.label.text = .7,
+                                         font.label.text = 1,
                                          label.bump.x = plot.env$lim*(1/15),
                                          label.bump.y = plot.env$lim.y*(1/15),
                                          round = 2,
+                                         point.pch = 23,
+                                         point.col = "black",
+                                         point.bg = "red",
+                                         point.cex = 1,
+                                         point.font =1,
                                          ...){
 
   for (i in seq.int(length(r2dz.x))) {
@@ -753,8 +769,11 @@ add_bound_to_contour.numeric <- function(r2dz.x,
 
     # Add the point on the contour:
     points(r2dz.x[i], r2yz.dx[i],
-           pch = 23, col = "black", bg = "red",
-           cex = 1, font = 1)
+           pch = point.pch,
+           col = point.col,
+           bg = point.bg,
+           cex = point.cex,
+           font = point.font)
     if (!is.null(bound_value[i])) {
       if (is.numeric(bound_value[i]))
         bound_value[i] <- round(bound_value[i], round)
@@ -770,7 +789,7 @@ add_bound_to_contour.numeric <- function(r2dz.x,
            r2yz.dx[i] + label.bump.y,
            labels = label,
            cex = cex.label.text,
-           font = 1)
+           font = font.label.text)
   }
 
 }

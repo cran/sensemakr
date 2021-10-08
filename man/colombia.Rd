@@ -4,9 +4,10 @@
 \name{colombia}
 \alias{colombia}
 \title{Data from the 2016 referendum for peace with the FARC in Colombia.}
-\format{A data frame with 1123 rows and 16 columns.
+\format{
+A data frame with 1123 rows and 16 columns.
 \describe{
-  \item{department}{Name for the provincial level unit, called departments or departmentos, of which there are 32 in the country.}
+  \item{department}{Name for the provincial level unit, called departments or departamentos, of which there are 32 in the country.}
   \item{dept_code}{Short code for the department}
   \item{town}{Name for the town, which is the smallest electoral unit available and is the unit of analysis.}
   \item{town_code}{Code for the town.}
@@ -22,7 +23,8 @@
   \item{fat_2006to2010_gtd}{Sum of fatalities due to FARC in the town in 2006 to 2010 (from GTD).}
   \item{fat_2011to2015_gtd}{Sum of fatalities due to FARC in the town in 2011 to 2015 (from GTD).}
   \item{fat_2010to2013}{Sum of fatalities due to FARC in the town in 2010 to 2013 (from GTD).}
-}}
+}
+}
 \usage{
 colombia
 }
