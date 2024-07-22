@@ -242,11 +242,12 @@ test_that(desc = "testing darfur sensemakr manually",
           })
 
 
-test_that(desc = "testing darfur sensitivity stats",{
+test_that(desc = "testing darfur sensitivity stats",
+          {
 
             # checks RV
             ## RV q = 1
-            rv <- robustness_value(model, covariates = "directlyharmed")
+            rv <- robustness_value(model, covariates = "directlyharmed", alpha = 1)
             expect_equivalent(c(rv), 0.138776, tolerance = 1e-5)
             expect_equivalent(attributes(rv)$q, 1)
             expect_equivalent(attributes(rv)$names, "directlyharmed")
@@ -284,12 +285,13 @@ test_that(desc = "testing darfur sensitivity stats",{
 
 })
 
-test_that(desc = "testing darfur adjusted estimates",{
+test_that(desc = "testing darfur adjusted estimates",
+          {
 
   should_be_zero <- adjusted_estimate(model, treatment = "directlyharmed", r2yz.dx = 1, r2dz.x = partial_r2(model, covariates = "directlyharmed"))
   expect_equivalent(should_be_zero, 0)
 
-  rv <- robustness_value(model, covariates = "directlyharmed")
+  rv <- robustness_value(model, covariates = "directlyharmed", alpha = 1)
   should_be_zero <- adjusted_estimate(model, treatment = "directlyharmed", r2yz.dx = rv, r2dz.x = rv)
   expect_equivalent(should_be_zero, 0)
 
@@ -302,11 +304,11 @@ test_that(desc = "testing darfur adjusted estimates",{
   should_be_estimate <- bias(model, treatment = "directlyharmed", r2yz.dx = 1, r2dz.x = partial_r2(model, covariates = "directlyharmed"))
   expect_equivalent(should_be_estimate, coef(model)["directlyharmed"])
 
-  rv <- robustness_value(model, covariates = "directlyharmed")
+  rv <- robustness_value(model, covariates = "directlyharmed", alpha = 1)
   should_be_estimate <- bias(model, treatment = "directlyharmed", r2yz.dx = rv, r2dz.x = rv)
   expect_equivalent(should_be_estimate, coef(model)["directlyharmed"])
 
-  rv <- robustness_value(model, covariates = "directlyharmed", q = 0.5)
+  rv <- robustness_value(model, covariates = "directlyharmed", q = 0.5, alpha = 1)
   should_be_half_estimate <- bias(model, treatment = "directlyharmed", r2yz.dx = rv, r2dz.x = rv)
   expect_equivalent(should_be_half_estimate, coef(model)["directlyharmed"]/2)
 
@@ -361,9 +363,7 @@ test_that(desc = "testing darfur plots",
                                          r2yz.dx = 1,
                                          r2dz.x = extreme_out$scenario_r2yz.dx_1$r2dz.x[5])
             expect_equivalent(adj_est, extreme_out$scenario_r2yz.dx_1$adjusted_estimate[5])
-}
-
-)
+})
 
 
 test_that("testing darfur print",
@@ -414,13 +414,12 @@ test_that("testing darfur different q",
             darfur_out <- sensemakr(model, treatment = "directlyharmed", benchmark_covariates = "female", q = 2, kd = 1:3)
             rvq <- darfur_out$sensitivity_stats$rv_q
             rvqa <- darfur_out$sensitivity_stats$rv_qa
-            expect_equivalent(rvq, robustness_value(model, covariates = "directlyharmed", q = 2))
+            expect_equivalent(rvq, robustness_value(model, covariates = "directlyharmed", q = 2, alpha = 1))
             expect_equivalent(rvqa, robustness_value(model, covariates = "directlyharmed", q = 2,alpha = 0.05))
-          }
+          })
 
-)
-
-test_that("Darfur group benchmarks", {
+test_that("Darfur group benchmarks",
+          {
   village <- grep(pattern = "village", names(coef(model)), value = T)
 
   sensitivity <- sensemakr(model, treatment = "directlyharmed",
@@ -435,5 +434,4 @@ test_that("Darfur group benchmarks", {
   expect_equal(bounds$r2dz.x, bounds.check$r2dz.x)
   expect_equal(bounds$r2yz.dx, bounds.check$r2yz.dx)
 
-}
-          )
+})

@@ -1,4 +1,4 @@
-## ---- include = FALSE---------------------------------------------------------
+## ----include = FALSE----------------------------------------------------------
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>",
@@ -6,7 +6,7 @@ knitr::opts_chunk$set(
   fig.width = 5
 )
 
-## ---- echo = FALSE------------------------------------------------------------
+## ----echo = FALSE-------------------------------------------------------------
 rm(list = ls())
 embed_png <- function(path, dpi = NULL) {
   meta <- attr(png::readPNG(path, native = TRUE, info = TRUE), "info")
@@ -48,7 +48,7 @@ informal_adjusted_estimate <- adjusted_estimate(model.ydx,
                                                 r2dz.x = r2dx, 
                                                 r2yz.dx = r2yx.d)
 
-## ---- fig.align='center'------------------------------------------------------
+## ----fig.align='center'-------------------------------------------------------
 # draws sensitivity contours
 ovb_contour_plot(model.ydx,  
                  treatment = "D", 
@@ -60,17 +60,17 @@ add_bound_to_contour(r2dz.x = r2dx,
                      bound_value = informal_adjusted_estimate,
                      bound_label = "Informal benchmark")
 
-## ---- echo=FALSE--------------------------------------------------------------
+## ----echo=FALSE---------------------------------------------------------------
 embed_png(path = "collider.png", dpi = 400)
 
-## ---- fig.align='center'------------------------------------------------------
+## ----fig.align='center'-------------------------------------------------------
 # compute formal bounds
 formal_bound <- ovb_bounds(model = model.ydx, 
                            treatment = "D", 
                            benchmark_covariates = "X", 
                            kd = 1, ky = 1)
 
-## ---- fig.align='center'------------------------------------------------------
+## ----fig.align='center'-------------------------------------------------------
 # contour plot
 ovb_contour_plot(model.ydx,  
                  treatment = "D",

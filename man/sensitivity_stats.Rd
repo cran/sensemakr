@@ -3,12 +3,32 @@
 \name{sensitivity_stats}
 \alias{sensitivity_stats}
 \alias{sensitivity_stats.lm}
+\alias{sensitivity_stats.fixest}
 \alias{sensitivity_stats.numeric}
 \title{Sensitivity statistics for regression coefficients}
 \usage{
 sensitivity_stats(...)
 
-\method{sensitivity_stats}{lm}(model, treatment, q = 1, alpha = 0.05, reduce = TRUE, ...)
+\method{sensitivity_stats}{lm}(
+  model,
+  treatment,
+  q = 1,
+  alpha = 0.05,
+  reduce = TRUE,
+  invert = FALSE,
+  ...
+)
+
+\method{sensitivity_stats}{fixest}(
+  model,
+  treatment,
+  q = 1,
+  alpha = 0.05,
+  reduce = TRUE,
+  invert = FALSE,
+  message = T,
+  ...
+)
 
 \method{sensitivity_stats}{numeric}(
   estimate,
@@ -18,15 +38,14 @@ sensitivity_stats(...)
   q = 1,
   alpha = 0.05,
   reduce = TRUE,
+  invert = FALSE,
   ...
 )
 }
 \arguments{
-\item{...}{Arguments passed to other methods. First argument should either be an
-\code{lm} model with the outcome regression or a numeric vector with the
-coefficient estimate.}
+\item{...}{arguments passed to other methods.}
 
-\item{model}{An \code{lm} object with the outcome regression.}
+\item{model}{An \code{lm} or \code{fixest} object with the outcome regression.}
 
 \item{treatment}{A character vector with the name of the treatment variable
 of the model.}
@@ -36,14 +55,18 @@ which means a reduction of 100\% of the current effect estimate (bring estimate 
 
 \item{alpha}{significance level.}
 
-\item{reduce}{Should the bias adjustment reduce or increase the
+\item{reduce}{should the bias adjustment reduce or increase the
 absolute value of the estimated coefficient? Default is \code{TRUE}.}
+
+\item{invert}{should IRV be computed instead of RV? (i.e. is the estimate insignificant?). Default is \code{FALSE}.}
+
+\item{message}{should messages be printed? Default = TRUE.}
 
 \item{estimate}{Coefficient estimate.}
 
-\item{se}{Standard error of the coefficient estimate.}
+\item{se}{standard error of the coefficient estimate.}
 
-\item{dof}{Residual degrees of freedom of the regression.}
+\item{dof}{residual degrees of freedom of the regression.}
 }
 \value{
 A \code{data.frame} containing the following quantities:

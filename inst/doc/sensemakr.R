@@ -1,4 +1,4 @@
-## ---- include = FALSE---------------------------------------------------------
+## ----include = FALSE----------------------------------------------------------
 knitr::opts_chunk$set(
   fig.height = 4.5,
   fig.width = 4.5,
@@ -7,7 +7,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 
-## ---- message=FALSE-----------------------------------------------------------
+## ----message=FALSE------------------------------------------------------------
 # loads package
 library(sensemakr)
 
@@ -20,16 +20,16 @@ darfur.model <- lm(peacefactor ~ directlyharmed  + village +  female +
                      age + farmer_dar + herder_dar + pastvoted + hhsize_darfur, 
                    data = darfur)
 
-## ---- echo=FALSE,  comment = ""-----------------------------------------------
+## ----echo=FALSE,  comment = ""------------------------------------------------
 stargazer::stargazer(darfur.model, keep = "directlyharmed", type = "text")
 
-## ---- eval=FALSE--------------------------------------------------------------
+## ----eval=FALSE---------------------------------------------------------------
 #  darfur.complete.model <- lm(peacefactor ~ directlyharmed  + village +  female +
 #                                age + farmer_dar + herder_dar + pastvoted + hhsize_darfur +
 #                                center*wealth*political_attitudes,
 #                              data = darfur)
 
-## ---- results = 'asis'--------------------------------------------------------
+## ----results = 'asis'---------------------------------------------------------
 # runs sensemakr for sensitivity analysis
 # in the darfur example
 darfur.sensitivity <- sensemakr(model = darfur.model, 
@@ -50,10 +50,10 @@ darfur.sensitivity <- sensemakr(model = darfur.model,
 ## -----------------------------------------------------------------------------
 darfur.sensitivity
 
-## ---- results='asis'----------------------------------------------------------
+## ----results='asis'-----------------------------------------------------------
 ovb_minimal_reporting(darfur.sensitivity, format = "html")
 
-## ---- results='hide'----------------------------------------------------------
+## ----results='hide'-----------------------------------------------------------
 summary(darfur.sensitivity)
 
 ## -----------------------------------------------------------------------------
@@ -62,6 +62,6 @@ plot(darfur.sensitivity)
 ## -----------------------------------------------------------------------------
 plot(darfur.sensitivity, sensitivity.of = "t-value")
 
-## ---- fig.width=6-------------------------------------------------------------
+## ----fig.width=6--------------------------------------------------------------
 plot(darfur.sensitivity, type = "extreme")
 

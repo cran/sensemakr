@@ -2,21 +2,85 @@
 % Please edit documentation in R/sensitivity_stats.R
 \name{robustness_value}
 \alias{robustness_value}
+\alias{rv}
 \alias{robustness_value.lm}
+\alias{robustness_value.fixest}
+\alias{robustness_value.default}
 \alias{robustness_value.numeric}
-\title{Computes the robustness value}
+\alias{extreme_robustness_value}
+\alias{xrv}
+\alias{extreme_robustness_value.lm}
+\alias{extreme_robustness_value.fixest}
+\alias{extreme_robustness_value.default}
+\alias{extreme_robustness_value.numeric}
+\title{Computes the (extreme) robustness value}
 \usage{
 robustness_value(...)
 
-\method{robustness_value}{lm}(model, covariates = NULL, q = 1, alpha = 1, ...)
+rv(...)
 
-\method{robustness_value}{numeric}(t_statistic, dof, q = 1, alpha = 1, ...)
+\method{robustness_value}{lm}(
+  model,
+  covariates = NULL,
+  q = 1,
+  alpha = 0.05,
+  invert = FALSE,
+  ...
+)
+
+\method{robustness_value}{fixest}(
+  model,
+  covariates = NULL,
+  q = 1,
+  alpha = 0.05,
+  invert = FALSE,
+  message = TRUE,
+  ...
+)
+
+\method{robustness_value}{default}(model, ...)
+
+\method{robustness_value}{numeric}(t_statistic, dof, q = 1, alpha = 0.05, invert = FALSE, ...)
+
+extreme_robustness_value(...)
+
+xrv(...)
+
+\method{extreme_robustness_value}{lm}(
+  model,
+  covariates = NULL,
+  q = 1,
+  alpha = 0.05,
+  invert = FALSE,
+  ...
+)
+
+\method{extreme_robustness_value}{fixest}(
+  model,
+  covariates = NULL,
+  q = 1,
+  alpha = 0.05,
+  invert = FALSE,
+  message = TRUE,
+  ...
+)
+
+\method{extreme_robustness_value}{default}(model, ...)
+
+\method{extreme_robustness_value}{numeric}(
+  t_statistic,
+  dof,
+  q = 1,
+  alpha = 0.05,
+  invert = FALSE,
+  ...
+)
 }
 \arguments{
-\item{...}{arguments passed to other methods. First argument should either be an \code{lm} model with the
+\item{...}{arguments passed to other methods. First argument should either be an \code{lm} model or a \code{fixest} model with the
 regression model or a numeric vector with the t-value of the coefficient estimate}
 
-\item{model}{an \code{lm} object with the regression model.}
+\item{model}{an \code{fixest} object with the regression model.}
 
 \item{covariates}{model covariates for which the robustness value will be computed. Default is to compute
 the robustness value of all covariates.}
@@ -26,6 +90,10 @@ which means a reduction of 100\% of the current effect estimate (bring estimate 
 
 \item{alpha}{significance level.}
 
+\item{invert}{should IRV be computed instead of RV? (i.e. is the estimate insignificant?). Default is \code{FALSE}.}
+
+\item{message}{should messages be printed? Default = TRUE.}
+
 \item{t_statistic}{\code{numeric} vector with the t-value of the coefficient estimates}
 
 \item{dof}{residual degrees of freedom of the regression}
@@ -34,10 +102,14 @@ which means a reduction of 100\% of the current effect estimate (bring estimate 
 The function returns a numerical vector with the robustness value. The arguments q and alpha are saved as attributes of the vector for reference.
 }
 \description{
-This function computes the robustness value of a regression coefficient.
+This function computes the (extreme) robustness value of a regression coefficient.
+
+The extreme robustness value describes the minimum strength of association (parameterized in terms of partial R2) that
+omitted variables would need to have with the treatment alone in order to change the estimated coefficient by
+a certain amount (for instance, to bring it down to zero).
 
 The robustness value describes the minimum strength of association (parameterized in terms of partial R2) that
-omitted variables would need to have both with the treatment and with the outcome to change the estimated coefficient by
+omitted variables would need to have \emph{both} with the treatment and with the outcome to change the estimated coefficient by
 a certain amount (for instance, to bring it down to zero).
 
 For instance, a robustness value of 1\% means that an unobserved confounder that explain 1\% of the residual variance of the outcome
@@ -45,7 +117,11 @@ and 1\% of the residual variance of the treatment is strong enough to explain aw
 means that any unobserved confounder that explain less than 90\% of the residual variance of both the outcome and the treatment assignment cannot
 fully account for the observed effect. You may also compute robustness value taking into account sampling uncertainty. See details in Cinelli and Hazlett (2020).
 
-The function \link{robustness_value} can take as input an \code{\link{lm}} object or you may directly pass the t-value and degrees of freedom.
+The functions \link{robustness_value} and \link{extreme_robustness_value} can take as input an \code{\link{lm}} object or you may directly pass the t-value and degrees of freedom.
+
+\code{rv} is a shorthand wrapper for \code{robustness_value}.
+
+\code{xrv} is a shorthand wrapper for \code{extreme_robustness_value}.
 }
 \examples{
 
@@ -58,17 +134,26 @@ model <- lm(peacefactor ~ directlyharmed + age + farmer_dar + herder_dar +
              pastvoted + hhsize_darfur + female + village, data = darfur)
 
 ## robustness value of directly harmed q =1 (reduce estimate to zero)
-robustness_value(model, covariates = "directlyharmed")
+robustness_value(model, covariates = "directlyharmed", alpha = 1)
+
+## extreme robustness value of directly harmed q =1 (reduce estimate to zero)
+extreme_robustness_value(model, covariates = "directlyharmed", alpha = 1)
+
+## note it equals the partial R2 of the treatment with the outcome
+partial_r2(model, covariates = "directlyharmed")
 
 ## robustness value of directly harmed q = 1/2 (reduce estimate in half)
-robustness_value(model, covariates = "directlyharmed", q = 1/2)
+robustness_value(model, covariates = "directlyharmed", q = 1/2, alpha = 1)
 
 ## robustness value of directly harmed q = 1/2, alpha = 0.05
 ## (reduce estimate in half, with 95\% confidence)
 robustness_value(model, covariates = "directlyharmed", q = 1/2, alpha = 0.05)
 
 # you can also provide the statistics directly
-robustness_value(t_statistic = 4.18445, dof = 783)
+robustness_value(t_statistic = 4.18445, dof = 783, alpha = 1)
+
+extreme_robustness_value(t_statistic = 4.18445, dof = 783, alpha = 1)
+
 }
 \references{
 Cinelli, C. and Hazlett, C. (2020), "Making Sense of Sensitivity: Extending Omitted Variable Bias." Journal of the Royal Statistical Society, Series B (Statistical Methodology).

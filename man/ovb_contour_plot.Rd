@@ -3,6 +3,7 @@
 \name{ovb_contour_plot}
 \alias{ovb_contour_plot}
 \alias{ovb_contour_plot.lm}
+\alias{ovb_contour_plot.fixest}
 \alias{ovb_contour_plot.formula}
 \alias{ovb_contour_plot.numeric}
 \title{Contour plots of omitted variable bias}
@@ -18,10 +19,34 @@ ovb_contour_plot(...)
   r2dz.x = NULL,
   r2yz.dx = r2dz.x,
   bound_label = "manual",
-  sensitivity.of = c("estimate", "t-value"),
+  sensitivity.of = c("estimate", "t-value", "lwr", "upr"),
   reduce = TRUE,
   estimate.threshold = 0,
-  t.threshold = 2,
+  alpha = 0.05,
+  t.threshold = NULL,
+  nlevels = 10,
+  col.contour = "grey40",
+  col.thr.line = "red",
+  label.text = TRUE,
+  cex.label.text = 0.7,
+  round = 3,
+  ...
+)
+
+\method{ovb_contour_plot}{fixest}(
+  model,
+  treatment,
+  benchmark_covariates = NULL,
+  kd = 1,
+  ky = kd,
+  r2dz.x = NULL,
+  r2yz.dx = r2dz.x,
+  bound_label = "manual",
+  sensitivity.of = c("estimate", "t-value", "lwr", "upr"),
+  reduce = TRUE,
+  estimate.threshold = 0,
+  alpha = 0.05,
+  t.threshold = NULL,
   nlevels = 10,
   col.contour = "grey40",
   col.thr.line = "red",
@@ -33,6 +58,8 @@ ovb_contour_plot(...)
 
 \method{ovb_contour_plot}{formula}(
   formula,
+  method = c("lm", "feols"),
+  vcov = "iid",
   data,
   treatment,
   benchmark_covariates = NULL,
@@ -41,10 +68,11 @@ ovb_contour_plot(...)
   r2dz.x = NULL,
   r2yz.dx = r2dz.x,
   bound_label = NULL,
-  sensitivity.of = c("estimate", "t-value"),
+  sensitivity.of = c("estimate", "t-value", "lwr", "upr"),
   reduce = TRUE,
   estimate.threshold = 0,
-  t.threshold = 2,
+  alpha = 0.05,
+  t.threshold = NULL,
   nlevels = 10,
   col.contour = "grey40",
   col.thr.line = "red",
@@ -61,13 +89,15 @@ ovb_contour_plot(...)
   r2dz.x = NULL,
   r2yz.dx = r2dz.x,
   bound_label = rep("manual", length(r2dz.x)),
-  sensitivity.of = c("estimate", "t-value"),
+  sensitivity.of = c("estimate", "t-value", "lwr", "upr"),
   reduce = TRUE,
   estimate.threshold = 0,
-  t.threshold = 2,
+  alpha = 0.05,
+  t.threshold = NULL,
   show.unadjusted = TRUE,
   lim = NULL,
-  lim.y = NULL,
+  lim.x = lim,
+  lim.y = lim,
   nlevels = 10,
   col.contour = "black",
   col.thr.line = "red",
@@ -80,7 +110,7 @@ ovb_contour_plot(...)
   cex.lab = 0.8,
   cex.axis = 0.8,
   cex.main = 1,
-  asp = lim/lim.y,
+  asp = lim.x/lim.y,
   list.par = list(mar = c(4, 4, 1, 1), pty = "s"),
   round = 3,
   ...
@@ -92,12 +122,12 @@ outcome regression, a \code{\link{formula}} describing the model along
 with the \code{\link{data.frame}} containing the variables of the model,
 or a numeric vector with the coefficient estimate.}
 
-\item{model}{An \code{lm} object with the outcome regression.}
+\item{model}{An \code{lm} or \code{fixest} object with the outcome regression.}
 
 \item{treatment}{A character vector with the name of the treatment variable
 of the model.}
 
-\item{benchmark_covariates}{The user has two options: (i)  character vector of the names of covariates that will be used to bound the plausible strength of the unobserved confounders. Each variable will be considered separately; (ii) a named list with character vector names of covariates that will be used, \emph{as a group}, to bound the plausible strength of the unobserved confounders. The names of the list will be used for the benchmark labels. Note: for factor variables with more than two levels, you need to provide the name of each level as encoded in the \code{lm} model (the columns of \code{model.matrix}).}
+\item{benchmark_covariates}{The user has two options: (i)  character vector of the names of covariates that will be used to bound the plausible strength of the unobserved confounders. Each variable will be considered separately; (ii) a named list with character vector names of covariates that will be used, \emph{as a group}, to bound the plausible strength of the unobserved confounders. The names of the list will be used for the benchmark labels. Note: for factor variables with more than two levels, you need to provide the name of each level as encoded in the \code{fixest} model (the columns of \code{model.matrix}).}
 
 \item{kd}{numeric vector. Parameterizes how many times stronger the confounder is related to the treatment in comparison to the observed benchmark covariate.
 Default value is \code{1} (confounder is as strong as benchmark covariate).}
@@ -105,10 +135,10 @@ Default value is \code{1} (confounder is as strong as benchmark covariate).}
 \item{ky}{numeric vector. Parameterizes how many times stronger the confounder is related to the outcome in comparison to the observed benchmark covariate.
 Default value is the same as \code{kd}.}
 
-\item{r2dz.x}{Hypothetical partial R2 of unobserved confounder
+\item{r2dz.x}{hypothetical partial R2 of unobserved confounder
 Z with treatment D, given covariates X.}
 
-\item{r2yz.dx}{Hypothetical partial R2 of unobserved confounder Z
+\item{r2yz.dx}{hypothetical partial R2 of unobserved confounder Z
 with outcome Y, given covariates X and treatment D.}
 
 \item{bound_label}{label to bounds provided manually in \code{r2dz.x} and \code{r2yz.dx}.}
@@ -116,10 +146,12 @@ with outcome Y, given covariates X and treatment D.}
 \item{sensitivity.of}{should the contour plot show adjusted estimates (\code{"estimate"})
 or adjusted t-values (\code{"t-value"})?}
 
-\item{reduce}{Should the bias adjustment reduce or increase the
+\item{reduce}{should the bias adjustment reduce or increase the
 absolute value of the estimated coefficient? Default is \code{TRUE}.}
 
 \item{estimate.threshold}{critical threshold for the point estimate.}
+
+\item{alpha}{significance level}
 
 \item{t.threshold}{critical threshold for the t-value.}
 
@@ -137,17 +169,23 @@ absolute value of the estimated coefficient? Default is \code{TRUE}.}
 
 \item{formula}{an object of the class \code{\link{formula}}: a symbolic description of the model to be fitted.}
 
+\item{method}{the default is \code{\link{lm}}. This argument can be changed to estimate the model using \code{\link[fixest]{feols}}. In this case the formula needs to be written so it can be estimated with \code{\link[fixest]{feols}} and the package needs to be installed.}
+
+\item{vcov}{the variance/covariance used in the estimation when using \code{\link[fixest]{feols}}. See \code{\link[fixest]{vcov.fixest}} for more details. Defaults to "iid".}
+
 \item{data}{data needed only when you pass a formula as first parameter. An object of the class \code{\link{data.frame}} containing the variables used in the analysis.}
 
 \item{estimate}{Coefficient estimate.}
 
-\item{se}{Standard error of the coefficient estimate.}
+\item{se}{standard error of the coefficient estimate.}
 
-\item{dof}{Residual degrees of freedom of the regression.}
+\item{dof}{residual degrees of freedom of the regression.}
 
 \item{show.unadjusted}{should the unadjusted estimates be shown? Default is `TRUE`.}
 
-\item{lim}{sets limit for x-axis. If `NULL`, limits are computed automatically.}
+\item{lim}{sets limit for both axis. If `NULL`, limits are computed automatically.}
+
+\item{lim.x}{sets limit for x-axis. If `NULL`, limits are computed automatically.}
 
 \item{lim.y}{sets limit for y-axis. If `NULL`, limits are computed automatically.}
 

@@ -3,13 +3,17 @@
 # robustness value --------------------------------------------------------
 
 
-#' Computes the robustness value
+#' Computes the (extreme) robustness value
 #'
 #' @description
-#' This function computes the robustness value of a regression coefficient.
+#' This function computes the (extreme) robustness value of a regression coefficient.
+#'
+#' The extreme robustness value describes the minimum strength of association (parameterized in terms of partial R2) that
+#' omitted variables would need to have with the treatment alone in order to change the estimated coefficient by
+#' a certain amount (for instance, to bring it down to zero).
 #'
 #' The robustness value describes the minimum strength of association (parameterized in terms of partial R2) that
-#' omitted variables would need to have both with the treatment and with the outcome to change the estimated coefficient by
+#' omitted variables would need to have \emph{both} with the treatment and with the outcome to change the estimated coefficient by
 #' a certain amount (for instance, to bring it down to zero).
 #'
 #' For instance, a robustness value of 1\% means that an unobserved confounder that explain 1\% of the residual variance of the outcome
@@ -17,11 +21,11 @@
 #' means that any unobserved confounder that explain less than 90\% of the residual variance of both the outcome and the treatment assignment cannot
 #' fully account for the observed effect. You may also compute robustness value taking into account sampling uncertainty. See details in Cinelli and Hazlett (2020).
 #'
-#' The function \link{robustness_value} can take as input an \code{\link{lm}} object or you may directly pass the t-value and degrees of freedom.
+#' The functions \link{robustness_value} and \link{extreme_robustness_value} can take as input an \code{\link{lm}} object or you may directly pass the t-value and degrees of freedom.
 #'
 #'
 #'
-#' @param ... arguments passed to other methods. First argument should either be an \code{lm} model with the
+#' @param ... arguments passed to other methods. First argument should either be an \code{lm} model or a \code{fixest} model with the
 #' regression model or a numeric vector with the t-value of the coefficient estimate
 #'
 #' @examples
@@ -35,17 +39,26 @@
 #'              pastvoted + hhsize_darfur + female + village, data = darfur)
 #'
 #' ## robustness value of directly harmed q =1 (reduce estimate to zero)
-#' robustness_value(model, covariates = "directlyharmed")
+#' robustness_value(model, covariates = "directlyharmed", alpha = 1)
+#'
+#' ## extreme robustness value of directly harmed q =1 (reduce estimate to zero)
+#' extreme_robustness_value(model, covariates = "directlyharmed", alpha = 1)
+#'
+#' ## note it equals the partial R2 of the treatment with the outcome
+#' partial_r2(model, covariates = "directlyharmed")
 #'
 #' ## robustness value of directly harmed q = 1/2 (reduce estimate in half)
-#' robustness_value(model, covariates = "directlyharmed", q = 1/2)
+#' robustness_value(model, covariates = "directlyharmed", q = 1/2, alpha = 1)
 #'
 #' ## robustness value of directly harmed q = 1/2, alpha = 0.05
 #' ## (reduce estimate in half, with 95% confidence)
 #' robustness_value(model, covariates = "directlyharmed", q = 1/2, alpha = 0.05)
 #'
 #' # you can also provide the statistics directly
-#' robustness_value(t_statistic = 4.18445, dof = 783)
+#' robustness_value(t_statistic = 4.18445, dof = 783, alpha = 1)
+#'
+#' extreme_robustness_value(t_statistic = 4.18445, dof = 783, alpha = 1)
+#'
 #' @return
 #' The function returns a numerical vector with the robustness value. The arguments q and alpha are saved as attributes of the vector for reference.
 #' @references Cinelli, C. and Hazlett, C. (2020), "Making Sense of Sensitivity: Extending Omitted Variable Bias." Journal of the Royal Statistical Society, Series B (Statistical Methodology).
@@ -55,37 +68,88 @@ robustness_value = function(...) {
   UseMethod("robustness_value")
 }
 
+#' @description
+#' \code{rv} is a shorthand wrapper for \code{robustness_value}.
+#' @export
+#' @rdname robustness_value
+rv <- function(...){
+  robustness_value(...)
+}
+
+
 #' @param model an \code{lm} object with the regression model.
 #' @param covariates model covariates for which the robustness value will be computed. Default is to compute
 #' the robustness value of all covariates.
 #' @param q percent change of the effect estimate that would be deemed problematic.  Default is \code{1},
 #' which means a reduction of 100\% of the current effect estimate (bring estimate to zero). It has to be greater than zero.
 #' @param alpha significance level.
+#' @param invert should IRV be computed instead of RV? (i.e. is the estimate insignificant?). Default is \code{FALSE}.
 #' @rdname robustness_value
 #' @export
 #' @importFrom stats setNames
 robustness_value.lm = function(model,
                                covariates = NULL,
                                q = 1,
-                               alpha = 1, ...) {
+                               alpha = 0.05,
+                               invert = FALSE, ...) {
 
   # check arguments
   check_q(q)
   check_alpha(alpha)
+  check_invert(invert)
 
   # extract model data
-  model_data <- model_helper(model, covariates = covariates)
+  model_data <- model_helper.lm(model, covariates = covariates)
   t_statistic = setNames(model_data$t_statistics, model_data$covariates)
   dof         = model_data$dof
 
   # compute rv
-  robustness_value(t_statistic = t_statistic, dof = dof, q = q, alpha = alpha)
+  robustness_value(t_statistic = t_statistic, dof = dof, q = q, alpha = alpha, invert = invert)
 
 }
 
+#' @param model an \code{fixest} object with the regression model.
+#' @param covariates model covariates for which the robustness value will be computed. Default is to compute
+#' the robustness value of all covariates.
+#' @param q percent change of the effect estimate that would be deemed problematic.  Default is \code{1},
+#' which means a reduction of 100\% of the current effect estimate (bring estimate to zero). It has to be greater than zero.
+#' @param alpha significance level.
+#' @param message should messages be printed? Default = TRUE.
+#' @param invert should IRV be computed instead of RV? (i.e. is the estimate insignificant?). Default is \code{FALSE}.
+#' @rdname robustness_value
+#' @export
+#' @importFrom stats setNames
+robustness_value.fixest = function(model,
+                               covariates = NULL,
+                               q = 1,
+                               alpha = 0.05,
+                               invert = FALSE,
+                               message = TRUE,
+                               ...) {
 
+  # check arguments
+  check_q(q)
+  check_alpha(alpha)
+  check_invert(invert)
+  if(message){
+    if(alpha <1){
+      message_vcov.fixest(model)
+    }
+  }
+  # extract model data
+  model_data <- model_helper.fixest(model, covariates = covariates)
+  t_statistic = setNames(model_data$t_statistics, model_data$covariates)
+  dof         = model_data$dof
+
+  # compute rv
+  robustness_value(t_statistic = t_statistic, dof = dof, q = q, alpha = alpha, invert = invert)
+
+}
+
+#' @rdname robustness_value
+#' @export
 robustness_value.default = function(model, ...) {
-  stop("The `robustness_value` function must be passed either an `lm` model object, ",
+  stop("The `robustness_value` function must be passed either an `lm` model object, a `fixest` model object, ",
        "or the t-statistics and degrees of freedom directly. ",
        "Other object types are not supported. The object passed was of class ",
        class(model)[1])
@@ -95,12 +159,17 @@ robustness_value.default = function(model, ...) {
 #' @param  dof residual degrees of freedom of the regression
 #' @rdname robustness_value
 #' @export
-robustness_value.numeric <- function(t_statistic, dof, q =1, alpha = 1, ...){
+robustness_value.numeric <- function(t_statistic,
+                                     dof,
+                                     q = 1,
+                                     alpha = 0.05,
+                                     invert = FALSE, ...){
 
   # check arguments
   check_q(q)
   check_alpha(alpha)
-
+  check_invert(invert)
+  check_dof(dof)
 
   # computes fq
   fq  <-  q * abs(t_statistic / sqrt(dof))
@@ -108,21 +177,40 @@ robustness_value.numeric <- function(t_statistic, dof, q =1, alpha = 1, ...){
   # computes critical f
   f.crit <- abs(qt(alpha / 2, df = dof - 1)) / sqrt(dof - 1)
 
+  # switches the algebraic position of fq and f.crit for invert
+  if (invert) { # invert case
+    f1 <- f.crit
+    f2 <- fq
+  } else { # RV case
+    f1 <- fq
+    f2 <- f.crit
+  }
   # computes fqa
-  fqa <- fq - f.crit
+  fqa <- f1 - f2
 
   # constraint binding case
-  rv  <-  0.5 * (sqrt(fqa^4 + (4 * fqa^2)) - fqa^2)
+  # rv  <-  0.5 * (sqrt(fqa^4 + (4 * fqa^2)) - fqa^2)
+  # equivalent stable expression
+  rv  <-  2 / (1 + sqrt(1 + 4/fqa^2))
 
   # constraint not binding case
-  rvx <- (fq^2 - f.crit^2)/(1 + fq^2)
+  xrv <- extreme_robustness_value.numeric(t_statistic,
+                                          dof = dof,
+                                          q=q,
+                                          alpha = alpha,
+                                          invert = invert)
 
   # combine results
+  is.xrv <- (fqa > 0 & f1 > 1/f2)
   rv.out <- rv # initiate everyone as binding
   rv.out[fqa < 0] <- 0 # zero for those who have negative fqa
-  rv.out[fqa > 0 & fq > 1/f.crit] <- rvx[fqa > 0 & fq > 1/f.crit] # extreme rv for those who are not binding
+  rv.out[is.xrv] <- xrv[is.xrv] # extreme rv for those who are not binding
 
-  attributes(rv.out) <- list(names = names(rv.out), q = q, alpha = alpha, class = c("numeric","rv"))
+  attributes(rv.out) <- list(names = names(rv.out),
+                             invert = invert, q = q,
+                             alpha = alpha,
+                             class = c("numeric","rv"),
+                             is.xrv = is.xrv)
   rv.out
 }
 
@@ -133,21 +221,145 @@ robustness_value.numeric <- function(t_statistic, dof, q =1, alpha = 1, ...){
 # }
 
 
-
+# Extreme RV --------------------------------------------------------------
 
 
 
 #' @export
-print.rv <- function(x, ...){
+#' @rdname robustness_value
+extreme_robustness_value = function(...) {
+  UseMethod("extreme_robustness_value")
+}
+
+#' @description
+#' \code{xrv} is a shorthand wrapper for \code{extreme_robustness_value}.
+#' @export
+#' @rdname robustness_value
+xrv <- function(...){
+  extreme_robustness_value(...)
+}
+
+#' @export
+#' @rdname robustness_value
+extreme_robustness_value.lm = function(model,
+                                       covariates = NULL,
+                                       q = 1,
+                                       alpha = 0.05,
+                                       invert = FALSE, ...) {
+
+  # check arguments
+  check_q(q)
+  check_alpha(alpha)
+  check_invert(invert)
+
+  # extract model data
+  model_data <- model_helper.lm(model, covariates = covariates)
+  t_statistic = setNames(model_data$t_statistics, model_data$covariates)
+  dof         = model_data$dof
+
+  # compute xrv
+  extreme_robustness_value(t_statistic = t_statistic,
+                           dof = dof, q = q,
+                           alpha = alpha, invert = invert)
+
+}
+
+#' @export
+#' @rdname robustness_value
+extreme_robustness_value.fixest = function(model,
+                                   covariates = NULL,
+                                   q = 1,
+                                   alpha = 0.05,
+                                   invert = FALSE,
+                                   message = TRUE,
+                                   ...) {
+
+  # check arguments
+  check_q(q)
+  check_alpha(alpha)
+  check_invert(invert)
+  if(message){
+    if(alpha < 1){
+      message_vcov.fixest(model)
+    }
+  }
+  # extract model data
+  model_data <- model_helper.fixest(model, covariates = covariates)
+  t_statistic = setNames(model_data$t_statistics, model_data$covariates)
+  dof         = model_data$dof
+
+  # compute xrv
+  extreme_robustness_value(t_statistic = t_statistic,
+                           dof = dof, q = q,
+                           alpha = alpha, invert = invert)
+
+}
+
+#' @export
+#' @rdname robustness_value
+extreme_robustness_value.default = function(model, ...) {
+  stop("The `extreme_robustness_value` function must be passed either an `lm` model object, a `fixest` model object, ",
+       "or the t-statistics and degrees of freedom directly. ",
+       "Other object types are not supported. The object passed was of class ",
+       class(model)[1])
+}
+
+
+#' @export
+#' @rdname robustness_value
+extreme_robustness_value.numeric <- function(t_statistic,
+                                             dof, q =1,
+                                             alpha = 0.05,
+                                             invert = FALSE, ...){
+
+  # check arguments
+  check_q(q)
+  check_alpha(alpha)
+  check_invert(invert)
+  check_dof(dof)
+
+  # computes fq^2
+  fq <- q * abs(t_statistic/sqrt(dof))
+  fq2 <- (fq)^2
+
+  # computes critical f^2
+  t.crit <- abs(qt(alpha/2, df = dof - 1))
+  f.crit2 <- (t.crit/sqrt(dof - 1))^2
+
+  if (invert) { # XIRV case
+    f1 <- f.crit2
+    f2 <- fq2
+  } else { # XRV case
+    f1 <- fq2
+    f2 <- f.crit2
+  }
+
+  xrv <- (f1 - f2)/(1 + f1)
+  xrv[f1 <= f2] <- 0
+
+  attributes(xrv) <- list(names = names(xrv), q = q,
+                          alpha = alpha,
+                          class = c("numeric","rv"),
+                          invert = invert)
+  xrv
+}
+
+
+
+#' @export
+print.rv <- function(x, digits = 3, ...){
   value <- x
   attributes(value) <- list(names = names(value))
   class(value) <- "numeric"
-  print(value)
+  print(value, digits = digits)
   q <- attr(x, "q")
   alpha <- attr(x, "alpha")
+  invert <- attr(x, "invert")
   cat("Parameters: q =", q)
-  if (!is.null(alpha)) cat(", alpha =", alpha,"\n")
+  if (!is.null(alpha)) cat(", alpha =", alpha)
+  cat(", invert =", invert, "\n")
 }
+
 
 
 
@@ -172,8 +384,8 @@ print.rv <- function(x, ...){
 #'
 #' For partial R2 of groups of covariates, check \code{\link{group_partial_r2}}.
 #'
-#' @param ... arguments passed to other methods. First argument should either be an \code{lm} object
-#' with the regression model or a numeric vector with the t-value of the coefficient estimate
+#' @param ... arguments passed to other methods. First argument should either be an \code{lm} model or a \code{fixest} model with the
+#' regression model or a numeric vector with the t-value of the coefficient estimate
 #'
 #' @examples
 #'
@@ -212,7 +424,24 @@ partial_r2 = function(...) {
 partial_r2.lm = function(model, covariates = NULL, ...) {
 
   # extract model data
-  model_data <- model_helper(model, covariates = covariates)
+  model_data <- model_helper.lm(model, covariates = covariates)
+  t_statistic = setNames(model_data$t_statistics, model_data$covariates)
+  dof         = model_data$dof
+
+  # Return R^2 -- this is one R^2 for each coefficient, we will subset for
+  # coeff of interest later.
+  partial_r2(t_statistic = t_statistic, dof = dof)
+}
+
+#' @param model an \code{fixest} object with the regression model
+#' @param covariates model covariates for which the partial R2 will be computed. Default is to compute
+#' the partial R2 of all covariates.
+#' @rdname partial_r2
+#' @export
+partial_r2.fixest = function(model, covariates = NULL, ...) {
+
+  # extract model data
+  model_data <- model_helper.fixest(model, covariates = covariates)
   t_statistic = setNames(model_data$t_statistics, model_data$covariates)
   dof         = model_data$dof
 
@@ -229,7 +458,7 @@ partial_r2.numeric <- function(t_statistic, dof, ...){
 }
 
 partial_r2.default = function(model) {
-  stop("The `partial_r2` function must be passed either an `lm` model object, ",
+  stop("The `partial_r2` function must be passed either an `lm`/`fixest` model object, ",
        "or the t-statistics and degrees of freedom directly. ",
        "Other object types are not supported. The object passed was of class ",
        class(model)[1])
@@ -251,9 +480,9 @@ partial_f2.numeric <- function(t_statistic, dof, ...){
 
 #' @rdname partial_r2
 #' @export
-partial_f2.lm = function(model, covariates = NULL, ...) {
+partial_f2.lm <- function(model, covariates = NULL, ...) {
   # extract model data
-  model_data <- model_helper(model, covariates = covariates)
+  model_data <- model_helper.lm(model, covariates = covariates)
   t_statistic = setNames(model_data$t_statistics, model_data$covariates)
   dof         = model_data$dof
 
@@ -262,17 +491,68 @@ partial_f2.lm = function(model, covariates = NULL, ...) {
   partial_f2(t_statistic = t_statistic, dof = dof)
 }
 
+#' @rdname partial_r2
+#' @export
+partial_f2.fixest = function(model, covariates = NULL, ...) {
+  # extract model data
+  model_data <- model_helper.fixest(model, covariates = covariates)
+  t_statistic = setNames(model_data$t_statistics, model_data$covariates)
+  dof         = model_data$dof
+
+  # Return R^2 -- this is one R^2 for each coefficient, we will subset for
+  # coeff of interest later.
+  partial_f2(t_statistic = t_statistic, dof = dof)
+}
 partial_r2.default = function(model, ...) {
-  stop("The `partial_f2` function must be passed either an `lm` model object, ",
+  stop("The `partial_f2` function must be passed either an `lm`/`fixest`  model object, ",
        "or the t-statistics and degrees of freedom directly. ",
        "Other object types are not supported. The object passed was of class ",
        class(model)[1])
 }
 
 
+
+# partial f ---------------------------------------------------------------
+
+
 #' @rdname partial_r2
 #' @export
-partial_f = function(...) sqrt(partial_f2(...))
+partial_f = function(...) {
+  UseMethod("partial_f")
+  }
+
+#' @rdname partial_r2
+#' @export
+partial_f.fixest <- function(model, covariates = NULL, ...){
+  sqrt(partial_f2.fixest(model, covariates = NULL, ...))
+}
+
+#' @rdname partial_r2
+#' @export
+partial_f.lm <- function(model, covariates = NULL, ...) {
+  sqrt(partial_f2.lm(model, covariates = NULL, ...))
+}
+
+#' @rdname partial_r2
+#' @export
+partial_f.numeric <- function(t_statistic, dof, ...) {
+  sqrt(partial_f2.numeric(t_statistic, dof, ...))
+}
+
+
+#' @rdname partial_r2
+#' @export
+partial_f.numeric <- function(t_statistic, dof, ...) sqrt(partial_f2.numeric(t_statistic, dof, ...))
+
+#' @rdname partial_r2
+#' @export
+partial_r2.default = function(model, ...) {
+  stop("The `partial_f` function must be passed either an `lm`/`fixest` model object, ",
+       "or the t-statistics and degrees of freedom directly. ",
+       "Other object types are not supported. The object passed was of class ",
+       class(model)[1])
+}
+
 
 
 
@@ -283,8 +563,8 @@ partial_f = function(...) sqrt(partial_f2(...))
 #'
 #' This function computes the partial R2 of a group of covariates in a linear regression model.
 #'
-#' @param ... arguments passed to other methods. First argument should either be an \code{lm} object
-#' with the regression model or a numeric vector with the F-statistics for the group of covariates.
+#' @param ... arguments passed to other methods. First argument should either be an \code{lm} model or a \code{fixest} model with the
+#' regression model or a numeric vector with the F-statistics for the group of covariates.
 #'
 #' @examples
 #'
@@ -327,6 +607,35 @@ group_partial_r2.lm <- function(model, covariates, ...){
   # degrees of freedom
   dof <- df.residual(model)
 
+
+  # compute F and R2
+  p <- length(coefs)
+  f <- (t(coefs) %*% solve(V) %*% coefs)/p
+
+  group_partial_r2(F.stats = f, p = p, dof = dof)
+
+}
+
+#' @inheritParams partial_r2
+#' @param covariates model covariates for which their grouped partial R2 will be computed.
+#' @rdname group_partial_r2
+#' @export
+group_partial_r2.fixest <- function(model, covariates, ...){
+
+  if (missing(covariates)) stop("Argument covariates missing.")
+
+  coefs <- coef(model)
+
+  check_covariates(all_names = names(coefs), covariates = covariates)
+
+  # coefficiens
+  coefs <- coefs[covariates]
+
+  # vcov matrix
+  V <- vcov(model, vcov = "iid")[covariates, covariates, drop = FALSE]
+
+  # degrees of freedom
+  dof <- fixest::degrees_freedom(model, type = "resid", vcov = "iid")
 
   # compute F and R2
   p <- length(coefs)
@@ -405,10 +714,11 @@ sensitivity_stats.lm <- function(model,
                                  q = 1,
                                  alpha = 0.05,
                                  reduce = TRUE,
+                                 invert = FALSE,
                                  ...)
 {
 
-  model_data <- model_helper(model, covariates = treatment)
+  model_data <- model_helper.lm(model, covariates = treatment)
   sensitivity_stats <- with(model_data, sensitivity_stats(estimate = estimate,
                                                           se = se,
                                                           dof = dof,
@@ -416,6 +726,36 @@ sensitivity_stats.lm <- function(model,
                                                           q = q,
                                                           alpha = alpha,
                                                           reduce = reduce,
+                                                          invert = invert,
+                                                          ...))
+  sensitivity_stats
+}
+
+#' @inheritParams adjusted_estimate
+#' @inheritParams robustness_value
+#' @rdname sensitivity_stats
+#' @param message should messages be printed? Default = TRUE.
+#' @export
+sensitivity_stats.fixest <- function(model,
+                                 treatment,
+                                 q = 1,
+                                 alpha = 0.05,
+                                 reduce = TRUE,
+                                 invert = FALSE,
+                                 message = T,
+                                 ...)
+{
+  if(message) message_vcov.fixest(model)
+
+  model_data <- model_helper.fixest(model, covariates = treatment)
+  sensitivity_stats <- with(model_data, sensitivity_stats(estimate = estimate,
+                                                          se = se,
+                                                          dof = dof,
+                                                          treatment = treatment,
+                                                          q = q,
+                                                          alpha = alpha,
+                                                          reduce = reduce,
+                                                          invert = invert,
                                                           ...))
   sensitivity_stats
 }
@@ -430,11 +770,11 @@ sensitivity_stats.numeric <- function(estimate,
                                       q = 1,
                                       alpha = 0.05,
                                       reduce = TRUE,
+                                      invert = FALSE,
                                       ...)
 {
-  if (se < 0 ) stop("Standard Error must be positive")
-  if (!is.numeric(se)) stop("Standard Error must be a numeric value")
-  if (dof < 0) stop("Degrees of Freedom must be poisitive")
+  check_se(se)
+  check_dof(dof)
   h0 <- ifelse(reduce, estimate*(1 - q), estimate*(1 + q) )
   original_t  <- estimate/se
   t_statistic <- (estimate - h0)/se
@@ -443,8 +783,8 @@ sensitivity_stats.numeric <- function(estimate,
   sensitivity_stats[["se"]] <- se
   sensitivity_stats[["t_statistic"]] <- t_statistic
   sensitivity_stats[["r2yd.x"]] <- as.numeric(partial_r2(t_statistic = original_t, dof = dof))
-  sensitivity_stats[["rv_q"]] <- (robustness_value(t_statistic = original_t, dof = dof, q = q))
-  sensitivity_stats[["rv_qa"]] <- (robustness_value(t_statistic = original_t, dof = dof, q = q, alpha = alpha))
+  sensitivity_stats[["rv_q"]] <- (robustness_value(t_statistic = original_t, dof = dof, q = q, alpha = 1, invert = invert))
+  sensitivity_stats[["rv_qa"]] <- (robustness_value(t_statistic = original_t, dof = dof, q = q, alpha = alpha, invert = invert))
   sensitivity_stats[["f2yd.x"]] <- as.numeric(partial_f2(t_statistic = original_t, dof = dof))
   sensitivity_stats[["dof"]] <- dof
   sensitivity_stats
@@ -472,17 +812,27 @@ check_alpha <- function(alpha) {
 
 
 check_se <- function(se){
-  if (se < 0) {
-    stop("Standard error provided must be a single non-negative number")
-  }
+  if (!is.numeric(se)) stop("Standard Error must be a numeric value")
+  if (se < 0) stop("Standard error provided must be a single non-negative number")
 }
 
 check_dof <- function(dof){
-  if (!is.numeric(dof) || length(dof) > 1 || dof <= 0) {
-    stop("Degrees of freedom provided must be a single non-negative number.")
+    if (any(!is.numeric(dof) | dof < 0)) {
+      stop("Degrees of freedom provided must be a non-negative number.")
+    }
+}
+
+check_invert <- function(invert) {
+  if ((!is.logical(invert) || length(invert) > 1)) {
+    stop("`invert` must be TRUE or FALSE.")
   }
 }
 
+check_r <- function(r) {
+  if ((!is.numeric(r) || length(r) > 1 || r > 1 || r < 0)) {
+    stop("`r` must be between 0 and 1.")
+  }
+}
 
 
 
@@ -497,6 +847,7 @@ check_dof <- function(dof){
 #' @param covariates model covariates from which statistics will be extracted.
 #' @param ... arguments passed to other methods.
 #' @export
+#' @keywords internal
 model_helper = function(model, covariates = NULL, ...) {
   UseMethod("model_helper", model)
 }
@@ -516,20 +867,47 @@ model_helper.lm = function(model, covariates = NULL, ...) {
   # warn_na_coefficients(model, covariates = covariates)
 
   # Let's avoid the NaN problem from dividing by zero
-  error_if_no_dof(model)
+  error_if_no_dof.lm(model)
 
   coefs <- coef(summary(model))
   covariates <- check_covariates(rownames(coefs), covariates)
 
-  if (!is.null(covariates)) coefs <- coefs[covariates, ,drop = FALSE]
+  if (!is.null(covariates)) {coefs <- coefs[covariates, ,drop = FALSE]}
 
-  list(
+  return(list(
     covariates = rownames(coefs),
     estimate = coefs[, "Estimate"],
     se = coefs[, "Std. Error"],
     t_statistics = coefs[, "t value"],
     dof = model$df.residual
-  )
+  ))
+}
+
+#' @export
+#' @keywords internal
+model_helper.fixest = function(model, covariates = NULL, ...) {
+  # Quickly extract things from an fixest object
+
+  # If we have a dropped coefficient (multicolinearity), we're not going to
+  # get an R^2 for this coefficient.
+  # warn_na_coefficients(model, covariates = covariates)
+
+  # Let's avoid the NaN problem from dividing by zero
+  error_if_no_dof.fixest(model)
+
+
+  coefs <- as.matrix(summary(model, vcov = "iid")$coeftable)
+  covariates <- check_covariates(rownames(coefs), covariates)
+
+  if (!is.null(covariates)) coefs <- coefs[covariates, ,drop = FALSE]
+
+  return(list(
+    covariates = rownames(coefs),
+    estimate = coefs[, "Estimate"],
+    se = coefs[, "Std. Error"],
+    t_statistics = coefs[, "t value"],
+    dof = fixest::degrees_freedom(model, type = "resid", vcov = "iid")
+  ))
 }
 
 
@@ -551,10 +929,35 @@ model_helper.lm = function(model, covariates = NULL, ...) {
 #   }
 # }
 
-error_if_no_dof = function(model) {
+
+error_if_no_dof = function(model, ...) {
+  UseMethod("error_if_no_dof")
+}
+
+
+error_if_no_dof.lm = function(model, ...) {
   if (model$df.residual == 0) {
     stop("There are 0 residual ",
          "degrees of freedom in the regression model provided.")
+  }
+}
+
+
+error_if_no_dof.fixest = function(model, ...) {
+  if (fixest::degrees_freedom(model, type = "resid", vcov = "iid") == 0) {
+    stop("There are 0 residual ",
+         "degrees of freedom in the regression model provided.")
+  }
+}
+
+
+
+message_vcov.fixest <- function(model){
+  vcov_type <- attr(summary(model)$coeftable, which = "type")
+  if(!is.null(vcov_type)){
+    if(vcov_type != "IID"){
+      message("Note for fixest: using 'iid' standard errors. Support for robust standard errors coming soon.")
+    }
   }
 }
 

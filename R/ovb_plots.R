@@ -6,7 +6,7 @@
 #  1. the lims used
 #  2. what the sensitivity was
 plot.env <- new.env(parent = emptyenv())
-plot.env$lim <- NULL
+plot.env$lim.x <- NULL
 plot.env$lim.y <- NULL
 plot.env$reduce <- NULL
 plot.env$sensitivity.of <- NULL
@@ -46,7 +46,8 @@ plot.sensemakr = function(x,
 
 
 #' @export
-ovb_contour_plot.sensemakr <- function(x, sensitivity.of = c("estimate", "t-value"), ...){
+ovb_contour_plot.sensemakr <- function(x,
+                                       sensitivity.of = c("estimate", "t-value", "lwr", "upr"), ...){
 
   sensitivity.of <- match.arg(sensitivity.of)
 
@@ -160,16 +161,15 @@ ovb_contour_plot = function(...) {
 }
 
 
-
-
-
 #' @inheritParams sensemakr
 #' @inheritParams adjusted_estimate
 #' @rdname ovb_contour_plot
-#' @param sensitivity.of should the contour plot show adjusted estimates (\code{"estimate"})
-#' or adjusted t-values (\code{"t-value"})?
+#' @param sensitivity.of should the contour plot show adjusted estimates (\code{"estimate"}),
+#'  adjusted t-values (\code{"t-value"}), adjusted lower limits (\code{"lwr"})
+#'  or upper limits (\code{"upr}) of confidence intervals?
 #' @param estimate.threshold critical threshold for the point estimate.
-#' @param t.threshold critical threshold for the t-value.
+#' @param alpha significance level
+#' @param t.threshold critical threshold for the t-value. If \code{NULL}, the value of \code{alpha} is used.
 #' @param lim sets limit for x-axis. If `NULL`, limits are computed automatically.
 #' @param lim.y  sets limit for y-axis. If `NULL`, limits are computed automatically.
 #' @param nlevels number of levels for the contour plot.
@@ -188,10 +188,11 @@ ovb_contour_plot.lm = function(model,
                                r2dz.x = NULL,
                                r2yz.dx = r2dz.x,
                                bound_label = "manual",
-                               sensitivity.of = c("estimate", "t-value"),
+                               sensitivity.of = c("estimate", "t-value", "lwr", "upr"),
                                reduce = TRUE,
                                estimate.threshold = 0,
-                               t.threshold = 2,
+                               alpha = 0.05,
+                               t.threshold = NULL,
                                nlevels = 10,
                                col.contour = "grey40",
                                col.thr.line = "red",
@@ -204,15 +205,20 @@ ovb_contour_plot.lm = function(model,
   check_multipliers(ky = ky, kd = kd)
 
 
+
   sensitivity.of <- match.arg(sensitivity.of)
   # extract model data
   if (!is.character(treatment)) stop("Argument treatment must be a string.")
   if (length(treatment) > 1) stop("You must pass only one treatment")
 
-  model_data <- model_helper(model, covariates = treatment)
+  model_data <- model_helper.lm(model, covariates = treatment)
   estimate <- model_data$estimate
   se <- model_data$se
   dof <- model_data$dof
+
+  if (is.null( t.threshold)) {
+    t.threshold <- qt(1 - alpha/2, df = dof)*sign(estimate)
+  }
 
   if (!is.null(r2dz.x)) {
     check_r2(r2dz.x = r2dz.x, r2yz.dx = r2yz.dx)
@@ -227,7 +233,108 @@ ovb_contour_plot.lm = function(model,
   if (!is.null(benchmark_covariates)) {
 
     # we will need to add an option for the bound type
-    bench_bounds <- ovb_bounds(model = model,
+    bench_bounds <- ovb_bounds.lm(model = model,
+                                  treatment = treatment,
+                                  benchmark_covariates = benchmark_covariates,
+                                  kd = kd,
+                                  ky = ky,
+                                  adjusted_estimates = FALSE)
+    bounds <- rbind(bounds, bench_bounds)
+  }
+
+  # update treatment env
+  plot.env$treatment <- treatment
+
+  ovb_contour_plot(estimate = estimate,
+                   se = se,
+                   dof = dof,
+                   reduce = reduce,
+                   estimate.threshold = estimate.threshold,
+                   r2dz.x = bounds$r2dz.x,
+                   r2yz.dx = bounds$r2yz.dx,
+                   bound_label = bounds$bound_label,
+                   sensitivity.of = sensitivity.of,
+                   alpha = alpha,
+                   t.threshold = t.threshold,
+                   nlevels = nlevels,
+                   col.contour = col.contour,
+                   col.thr.line = col.thr.line,
+                   label.text = label.text,
+                   cex.label.text = cex.label.text,
+                   round = round,
+                   ...)
+}
+
+#' @inheritParams sensemakr
+#' @inheritParams adjusted_estimate
+#' @rdname ovb_contour_plot
+#' @param sensitivity.of should the contour plot show adjusted estimates (\code{"estimate"})
+#' or adjusted t-values (\code{"t-value"})?
+#' @param estimate.threshold critical threshold for the point estimate.
+#' @param t.threshold critical threshold for the t-value.
+#' @param lim sets limit for both axis. If `NULL`, limits are computed automatically.
+#' @param lim.x  sets limit for x-axis. If `NULL`, limits are computed automatically.
+#' @param lim.y  sets limit for y-axis. If `NULL`, limits are computed automatically.
+#' @param nlevels number of levels for the contour plot.
+#' @param col.contour color of contour lines.
+#' @param col.thr.line color of threshold contour line.
+#' @param label.text should label texts be plotted? Default is \code{TRUE}.
+#' @param label.bump.x bump on the x coordinate of label text.
+#' @param label.bump.y bump on the y coordinate of label text.
+#' @param round number of digits to show in contours and bound values
+#' @export
+ovb_contour_plot.fixest = function(model,
+                                   treatment,
+                                   benchmark_covariates = NULL,
+                                   kd = 1,
+                                   ky = kd,
+                                   r2dz.x = NULL,
+                                   r2yz.dx = r2dz.x,
+                                   bound_label = "manual",
+                                   sensitivity.of = c("estimate", "t-value", "lwr", "upr"),
+                                   reduce = TRUE,
+                                   estimate.threshold = 0,
+                                   alpha = 0.05,
+                                   t.threshold = NULL,
+                                   nlevels = 10,
+                                   col.contour = "grey40",
+                                   col.thr.line = "red",
+                                   label.text = TRUE,
+                                   cex.label.text = .7,
+                                   round = 3,
+                                   ...) {
+
+
+  check_multipliers(ky = ky, kd = kd)
+
+
+  sensitivity.of <- match.arg(sensitivity.of)
+  # extract model data
+  if (!is.character(treatment)) stop("Argument treatment must be a string.")
+  if (length(treatment) > 1) stop("You must pass only one treatment")
+
+  model_data <- model_helper.fixest(model, covariates = treatment)
+  estimate <- model_data$estimate
+  se <- model_data$se
+  dof <- model_data$dof
+  if (is.null( t.threshold)) {
+    t.threshold <- qt(1 - alpha/2, df = dof)
+  }
+
+  if (!is.null(r2dz.x)) {
+    check_r2(r2dz.x = r2dz.x, r2yz.dx = r2yz.dx)
+    bounds <-  data.frame(r2dz.x = r2dz.x,
+                          r2yz.dx = r2yz.dx,
+                          bound_label = bound_label,
+                          stringsAsFactors = FALSE)
+  } else{
+    bounds <-  NULL
+  }
+
+  if (!is.null(benchmark_covariates)) {
+
+    # we will need to add an option for the bound type
+    bench_bounds <- ovb_bounds.fixest(model = model,
                                treatment = treatment,
                                benchmark_covariates = benchmark_covariates,
                                kd = kd,
@@ -260,11 +367,14 @@ ovb_contour_plot.lm = function(model,
 
 }
 
+
 #' @inheritParams sensemakr
 #' @inheritParams adjusted_estimate
 #' @rdname ovb_contour_plot
 #' @export
 ovb_contour_plot.formula = function(formula,
+                                    method = c("lm", "feols"),
+                                    vcov = "iid",
                                     data,
                                     treatment,
                                     benchmark_covariates = NULL,
@@ -273,10 +383,11 @@ ovb_contour_plot.formula = function(formula,
                                     r2dz.x = NULL,
                                     r2yz.dx = r2dz.x,
                                     bound_label = NULL,
-                                    sensitivity.of = c("estimate", "t-value"),
+                                    sensitivity.of = c("estimate", "t-value", "lwr", "upr"),
                                     reduce = TRUE,
                                     estimate.threshold = 0,
-                                    t.threshold = 2,
+                                    alpha = 0.05,
+                                    t.threshold = NULL,
                                     nlevels = 10,
                                     col.contour = "grey40",
                                     col.thr.line = "red",
@@ -294,9 +405,18 @@ ovb_contour_plot.formula = function(formula,
 
   sensitivity.of <- match.arg(sensitivity.of)
 
+  type <- match.arg(method, method)
 
-  lm.call <- call("lm", formula = substitute(formula), data = substitute(data))
-  outcome_model = eval(lm.call)
+  if(type == "lm") {
+    reg.call <- call(type, formula = substitute(formula), data = substitute(data))
+    outcome_model = eval(reg.call)
+  } else if(type == "feols") {
+    if (!requireNamespace("fixest")) {
+      stop("Please install the fixest package.")
+    }
+    vcov <- vcov
+    outcome_model <- fixest::feols(fml = formula, data = data, vcov = vcov)
+  }
 
   ovb_contour_plot(model = outcome_model,
                    treatment = treatment,
@@ -340,13 +460,15 @@ ovb_contour_plot.numeric = function(estimate,
                                     r2dz.x = NULL,
                                     r2yz.dx = r2dz.x,
                                     bound_label = rep("manual", length(r2dz.x)),
-                                    sensitivity.of = c("estimate", "t-value"),
+                                    sensitivity.of = c("estimate", "t-value", "lwr", "upr"),
                                     reduce = TRUE,
                                     estimate.threshold = 0,
-                                    t.threshold = 2,
+                                    alpha = 0.05,
+                                    t.threshold = NULL,
                                     show.unadjusted = TRUE,
                                     lim = NULL,
-                                    lim.y = NULL,
+                                    lim.x = lim,
+                                    lim.y = lim,
                                     nlevels = 10,
                                     col.contour = "black",
                                     col.thr.line = "red",
@@ -359,19 +481,23 @@ ovb_contour_plot.numeric = function(estimate,
                                     cex.lab = .8,
                                     cex.axis = .8,
                                     cex.main = 1,
-                                    asp = lim/lim.y,
+                                    asp = lim.x/lim.y,
                                     list.par = list(mar = c(4,4,1,1), pty = "s"),
                                     round = 3,
                                     ...) {
 
   check_estimate(estimate)
   check_r2(r2dz.x = r2dz.x, r2yz.dx = r2yz.dx)
+  if (is.null( t.threshold)) {
+    t.threshold <- qt(1 - alpha/2, df = dof)
+  }
+
   if (length(r2dz.x) != length(r2yz.dx)) {
     stop("Length of r2dz.x and r2yz.dx partial R2 must match")
   }
 
-  if (is.null(lim)){
-    lim   <- min(max(c(0.4, r2dz.x*1.2)), 1 - 1e-12)
+  if (is.null(lim.x)){
+    lim.x   <- min(max(c(0.4, r2dz.x*1.2)), 1 - 1e-12)
   }
 
   if (is.null(lim.y)){
@@ -379,15 +505,15 @@ ovb_contour_plot.numeric = function(estimate,
   }
 
   if (is.null(label.bump.x)){
-    label.bump.x <- lim*(1/15)
+    label.bump.x <- lim.x*(1/15)
   }
 
   if (is.null(label.bump.y)){
     label.bump.y <- lim.y*(1/15)
   }
 
-  if (lim > 1) {
-    lim <- 1 - 1e-12
+  if (lim.x > 1) {
+    lim.x <- 1 - 1e-12
     warning("Contour limit larger than 1 was set to 1.")
   }
 
@@ -396,8 +522,8 @@ ovb_contour_plot.numeric = function(estimate,
     warning("Contour limit larger than 1 was set to 1.")
   }
 
-  if (lim < 0) {
-    lim <- 0.4
+  if (lim.x < 0) {
+    lim.x <- 0.4
     warning("Contour limit less than 0 was set to 0.4.")
   }
 
@@ -411,7 +537,7 @@ ovb_contour_plot.numeric = function(estimate,
   sensitivity.of <- match.arg(sensitivity.of)
 
   # Set up the grid for the contour plot
-  grid_values.x = seq(0, lim, by = lim/400)
+  grid_values.x = seq(0, lim.x, by = lim.x/400)
   grid_values.y = seq(0, lim.y, by = lim.y/400)
 
   # Are we plotting t or bias in r2?
@@ -452,6 +578,31 @@ ovb_contour_plot.numeric = function(estimate,
                                 r2dz.x = r2dz.x,
                                 r2yz.dx = r2yz.dx,
                                 reduce = reduce, h0 = estimate.threshold)
+
+  }
+
+  if (sensitivity.of %in% c("lwr", "upr")) {
+    z_axis = outer(grid_values.x, grid_values.y,
+                   FUN = "adjusted_ci",
+                   which = sensitivity.of,
+                   se = se, dof = dof,
+                   estimate = estimate,
+                   reduce = reduce,
+                   alpha = alpha) # we are computing the t-value of H0: tau = estimate.threshold
+    threshold = estimate.threshold
+    plot_estimate = adjusted_ci(estimate = estimate, se = se, dof = dof, alpha = alpha,
+                                which = sensitivity.of,
+                                r2dz.x = 0, r2yz.dx = 0)
+
+    if (!is.null(r2dz.x))
+      bound_value <- adjusted_ci(estimate = estimate,
+                                 se = se,
+                                 dof = dof,
+                                 r2dz.x = r2dz.x,
+                                 r2yz.dx = r2yz.dx,
+                                 which = sensitivity.of,
+                                 reduce = reduce,
+                                 alpha = alpha)
 
   }
 
@@ -528,7 +679,7 @@ ovb_contour_plot.numeric = function(estimate,
 
     text(0.0 + label.bump.x, 0.00 + label.bump.y,
          paste0("Unadjusted\n(",
-                signif(plot_estimate, 2),
+                round(plot_estimate, digits = round),
                 ")"),
          cex = cex.label.text)
   }
@@ -557,7 +708,7 @@ ovb_contour_plot.numeric = function(estimate,
 
   # update plot environment variables
   # for further use with add_bounds_to_contour if needed
-  plot.env$lim <- lim
+  plot.env$lim.x <- lim.x
   plot.env$lim.y <- lim.y
   plot.env$reduce <- reduce
   plot.env$sensitivity.of <- sensitivity.of
@@ -610,7 +761,7 @@ add_bound_to_contour.ovb_bounds <- function(bounds,
                                             label.text = TRUE,
                                             bound_label = bounds$bound_label,
                                             bound_value = NULL,
-                                            label.bump.x = plot.env$lim*(1/15),
+                                            label.bump.x = plot.env$lim.x*(1/15),
                                             label.bump.y = plot.env$lim.y*(1/15),
                                             round = 2,
                                             cex.label.text = .7,
@@ -653,7 +804,7 @@ add_bound_to_contour.ovb_partial_r2_bound <- function(bounds,
                                                       label.text = TRUE,
                                                       bound_label = bounds$bound_label,
                                                       bound_value = NULL,
-                                                      label.bump.x = plot.env$lim*(1/15),
+                                                      label.bump.x = plot.env$lim.x*(1/15),
                                                       label.bump.y = plot.env$lim.y*(1/15),
                                                       round = 2,
                                                       cex.label.text = .7,
@@ -686,7 +837,7 @@ add_bound_to_contour.lm <- function(model,
                                     sensitivity.of = plot.env$sensitivity.of,
                                     label.text = TRUE,
                                     cex.label.text = .7,
-                                    label.bump.x = plot.env$lim*(1/15),
+                                    label.bump.x = plot.env$lim.x*(1/15),
                                     label.bump.y = plot.env$lim.y*(1/15),
                                     round = 2,
                                     ...)
@@ -704,7 +855,7 @@ add_bound_to_contour.lm <- function(model,
   }
 
   # we will need to add an option for the bound type
-  bounds <- ovb_bounds(model = model,
+  bounds <- ovb_bounds.lm(model = model,
                        treatment = treatment,
                        benchmark_covariates = benchmark_covariates,
                        kd = kd,
@@ -738,12 +889,75 @@ add_bound_to_contour.lm <- function(model,
 
 #' @inheritParams ovb_contour_plot
 #' @rdname add_bound_to_contour
+#' @export
+add_bound_to_contour.fixest <- function(model,
+                                    benchmark_covariates,
+                                    kd = 1,
+                                    ky = kd,
+                                    bound_label = NULL,
+                                    treatment = plot.env$treatment,
+                                    reduce = plot.env$reduce,
+                                    sensitivity.of = plot.env$sensitivity.of,
+                                    label.text = TRUE,
+                                    cex.label.text = .7,
+                                    label.bump.x = plot.env$lim.x*(1/15),
+                                    label.bump.y = plot.env$lim.y*(1/15),
+                                    round = 2,
+                                    ...)
+{
+  sensitivity.of <- match.arg(sensitivity.of)
+
+  if (is.null(plot.env$treatment)) {
+    stop("No treatment found. Please draw a contour plot first, or provide the treatment variable name manually.")
+  }
+
+  if (treatment != plot.env$treatment) {
+    warning("Treament variable provided (",  treatment, ") ",
+            "differs from the treatment variable of the last contour plot (",
+            plot.env$treatment, ").")
+  }
+
+  # we will need to add an option for the bound type
+  bounds <- ovb_bounds.fixest(model = model,
+                          treatment = treatment,
+                          benchmark_covariates = benchmark_covariates,
+                          kd = kd,
+                          ky = ky,
+                          adjusted_estimates = TRUE,
+                          reduce = reduce)
+
+  if (sensitivity.of == "estimate") {
+    bound_value <- bounds$adjusted_estimate
+  }
+
+  if (sensitivity.of == "t-value") {
+    bound_value <- bounds$adjusted_t
+  }
+
+  if (is.null(bound_label)) {
+    bound_label <-  bounds$bound_label
+  }
+
+  add_bound_to_contour(r2dz.x = bounds$r2dz.x,
+                       r2yz.dx = bounds$r2yz.dx,
+                       bound_value = bound_value,
+                       bound_label = bound_label,
+                       label.text = label.text,
+                       cex.label.text = cex.label.text,
+                       label.bump.x = label.bump.x,
+                       label.bump.y = label.bump.y,
+                       round = round,
+                       ...)
+}
+
+#' @inheritParams ovb_contour_plot
+#' @rdname add_bound_to_contour
 #' @param bound_value value to be printed in label bound.
 #' @param round integer indicating the number of decimal places to be used for rounding.
 #' @param font.label.text font for the label text.
 #' @param point.pch plotting character for \code{\link{points}}.
 #' @param point.col color code or name for \code{\link{points}}.
-#' @param point.bg backgrounf (fill) color for \code{\link{points}}.
+#' @param point.bg background (fill) color for \code{\link{points}}.
 #' @param point.cex size of \code{\link{points}}.
 #' @param point.font font for \code{\link{points}}.
 #' @export
@@ -754,7 +968,7 @@ add_bound_to_contour.numeric <- function(r2dz.x,
                                          label.text = TRUE,
                                          cex.label.text = .7,
                                          font.label.text = 1,
-                                         label.bump.x = plot.env$lim*(1/15),
+                                         label.bump.x = plot.env$lim.x*(1/15),
                                          label.bump.y = plot.env$lim.y*(1/15),
                                          round = 2,
                                          point.pch = 23,
@@ -869,14 +1083,14 @@ ovb_extreme_plot.lm <- function(model,
   }
 
 
-  model_data <- model_helper(model, covariates = treatment)
+  model_data <- model_helper.lm(model, covariates = treatment)
   estimate <- model_data$estimate
   se <- model_data$se
   dof <- model_data$dof
 
   if (!is.null(benchmark_covariates)) {
       # TODO: We will need to make bound_type an option later
-      bounds <- ovb_bounds(model = model,
+      bounds <- ovb_bounds.lm(model = model,
                            treatment = treatment,
                            benchmark_covariates = benchmark_covariates,
                            kd = kd,
@@ -904,11 +1118,82 @@ ovb_extreme_plot.lm <- function(model,
 
 }
 
+#' @inheritParams adjusted_estimate
+#' @rdname ovb_extreme_plot
+#' @param threshold estimate threshold.
+#' @param legend should legend be plotted? Default is \code{TRUE}.
+#' @param cex.legend size of the text for the legend.
+#' @export
+ovb_extreme_plot.fixest <- function(model,
+                                treatment,
+                                benchmark_covariates = NULL,
+                                kd = 1,
+                                r2yz.dx = c(1, 0.75, 0.5),
+                                r2dz.x = NULL,
+                                reduce = TRUE,
+                                threshold = 0,
+                                lim = min(c(r2dz.x + 0.1, 0.5)),
+                                legend = TRUE,
+                                cex.legend = 0.65,
+                                legend.bty = "n",
+                                ...){
+
+  # extract model data
+  if (!is.character(treatment)) stop("Argument treatment must be a string.")
+  if (length(treatment) > 1) stop("You must pass only one treatment")
+
+  if (lim > 1) {
+    lim <- 1
+    warning("Plot limit larger than 1 was set to 1.")
+  }
+  if (lim < 0) {
+    lim <- 0.4
+    warning("Plot limit less than 0 was set to 0.4.")
+  }
+
+
+  model_data <- model_helper.fixest(model, covariates = treatment)
+  estimate <- model_data$estimate
+  se <- model_data$se
+  dof <- model_data$dof
+
+  if (!is.null(benchmark_covariates)) {
+    # TODO: We will need to make bound_type an option later
+    bounds <- ovb_bounds.fixest(model = model,
+                            treatment = treatment,
+                            benchmark_covariates = benchmark_covariates,
+                            kd = kd,
+                            ky = 1)
+
+    r2dz.x <- c(r2dz.x, bounds$r2dz.x)
+
+  }
+
+
+  ovb_extreme_plot(estimate = estimate,
+                   se = se,
+                   dof = dof,
+                   r2dz.x = r2dz.x,
+                   r2yz.dx = r2yz.dx,
+                   reduce = reduce,
+                   threshold = threshold,
+                   lim = lim,
+                   legend = legend,
+                   cex.legend = cex.legend,
+                   legend.bty = legend.bty,
+                   ...)
+
+
+
+}
+
 
 #' @inheritParams sensemakr
 #' @rdname ovb_extreme_plot
 #' @export
 ovb_extreme_plot.formula = function(formula,
+                                    method = c("lm", "feols"),
+                                    vcov = "iid",
                                     data,
                                     treatment,
                                     benchmark_covariates = NULL,
@@ -926,8 +1211,18 @@ ovb_extreme_plot.formula = function(formula,
                 formula = formula,
                 data = data)
 
-  lm.call <- call("lm", formula = substitute(formula), data = substitute(data))
-  outcome_model = eval(lm.call)
+  type <- match.arg(method, method)
+
+  if(type == "lm") {
+    reg.call <- call(type, formula = substitute(formula), data = substitute(data))
+    outcome_model = eval(reg.call)
+  } else if(type == "feols") {
+    if (!requireNamespace("fixest")) {
+      stop("Please install the fixest package.")
+    }
+    vcov <- vcov
+    outcome_model <- fixest::feols(fml = formula, data = data, vcov = vcov)
+  }
 
   ovb_extreme_plot(model = outcome_model,
                    treatment = treatment,

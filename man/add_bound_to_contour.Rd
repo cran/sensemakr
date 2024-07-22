@@ -3,6 +3,7 @@
 \name{add_bound_to_contour}
 \alias{add_bound_to_contour}
 \alias{add_bound_to_contour.lm}
+\alias{add_bound_to_contour.fixest}
 \alias{add_bound_to_contour.numeric}
 \title{Add bounds to contour plot of omitted variable bias}
 \usage{
@@ -19,7 +20,24 @@ add_bound_to_contour(...)
   sensitivity.of = plot.env$sensitivity.of,
   label.text = TRUE,
   cex.label.text = 0.7,
-  label.bump.x = plot.env$lim * (1/15),
+  label.bump.x = plot.env$lim.x * (1/15),
+  label.bump.y = plot.env$lim.y * (1/15),
+  round = 2,
+  ...
+)
+
+\method{add_bound_to_contour}{fixest}(
+  model,
+  benchmark_covariates,
+  kd = 1,
+  ky = kd,
+  bound_label = NULL,
+  treatment = plot.env$treatment,
+  reduce = plot.env$reduce,
+  sensitivity.of = plot.env$sensitivity.of,
+  label.text = TRUE,
+  cex.label.text = 0.7,
+  label.bump.x = plot.env$lim.x * (1/15),
   label.bump.y = plot.env$lim.y * (1/15),
   round = 2,
   ...
@@ -33,7 +51,7 @@ add_bound_to_contour(...)
   label.text = TRUE,
   cex.label.text = 0.7,
   font.label.text = 1,
-  label.bump.x = plot.env$lim * (1/15),
+  label.bump.x = plot.env$lim.x * (1/15),
   label.bump.y = plot.env$lim.y * (1/15),
   round = 2,
   point.pch = 23,
@@ -47,9 +65,9 @@ add_bound_to_contour(...)
 \arguments{
 \item{...}{arguments passed to other methods.}
 
-\item{model}{An \code{lm} object with the outcome regression.}
+\item{model}{An \code{lm} or \code{fixest} object with the outcome regression.}
 
-\item{benchmark_covariates}{The user has two options: (i)  character vector of the names of covariates that will be used to bound the plausible strength of the unobserved confounders. Each variable will be considered separately; (ii) a named list with character vector names of covariates that will be used, \emph{as a group}, to bound the plausible strength of the unobserved confounders. The names of the list will be used for the benchmark labels. Note: for factor variables with more than two levels, you need to provide the name of each level as encoded in the \code{lm} model (the columns of \code{model.matrix}).}
+\item{benchmark_covariates}{The user has two options: (i)  character vector of the names of covariates that will be used to bound the plausible strength of the unobserved confounders. Each variable will be considered separately; (ii) a named list with character vector names of covariates that will be used, \emph{as a group}, to bound the plausible strength of the unobserved confounders. The names of the list will be used for the benchmark labels. Note: for factor variables with more than two levels, you need to provide the name of each level as encoded in the \code{fixest} model (the columns of \code{model.matrix}).}
 
 \item{kd}{numeric vector. Parameterizes how many times stronger the confounder is related to the treatment in comparison to the observed benchmark covariate.
 Default value is \code{1} (confounder is as strong as benchmark covariate).}
@@ -62,7 +80,7 @@ Default value is the same as \code{kd}.}
 \item{treatment}{A character vector with the name of the treatment variable
 of the model.}
 
-\item{reduce}{Should the bias adjustment reduce or increase the
+\item{reduce}{should the bias adjustment reduce or increase the
 absolute value of the estimated coefficient? Default is \code{TRUE}.}
 
 \item{sensitivity.of}{should the contour plot show adjusted estimates (\code{"estimate"})
@@ -78,10 +96,10 @@ or adjusted t-values (\code{"t-value"})?}
 
 \item{round}{integer indicating the number of decimal places to be used for rounding.}
 
-\item{r2dz.x}{Hypothetical partial R2 of unobserved confounder
+\item{r2dz.x}{hypothetical partial R2 of unobserved confounder
 Z with treatment D, given covariates X.}
 
-\item{r2yz.dx}{Hypothetical partial R2 of unobserved confounder Z
+\item{r2yz.dx}{hypothetical partial R2 of unobserved confounder Z
 with outcome Y, given covariates X and treatment D.}
 
 \item{bound_value}{value to be printed in label bound.}
@@ -92,7 +110,7 @@ with outcome Y, given covariates X and treatment D.}
 
 \item{point.col}{color code or name for \code{\link{points}}.}
 
-\item{point.bg}{backgrounf (fill) color for \code{\link{points}}.}
+\item{point.bg}{background (fill) color for \code{\link{points}}.}
 
 \item{point.cex}{size of \code{\link{points}}.}
 
